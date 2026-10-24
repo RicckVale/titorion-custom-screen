@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+*.py[cod]
+config/screen_state.json
+preview_teste.png
+*.log

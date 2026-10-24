@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Titorion Saiph — Screen Tool</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0f1117;
+    color: #e5e7eb;
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 2rem 1rem;
+  }
+  .container { width: 100%; max-width: 720px; }
+  h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+  .subtitle { color: #9ca3af; font-size: .85rem; margin-bottom: 1.5rem; }
+  .card {
+    background: #1a1d27;
+    border: 1px solid #2d3142;
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .card h2 { font-size: .95rem; margin: 0 0 .75rem; color: #a5b4fc; }
+  button {
+    background: #4f46e5;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: .6rem 1.2rem;
+    font-size: .9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  button:hover:not(:disabled) { background: #6366f1; }
+  button:disabled { background: #374151; color: #6b7280; cursor: not-allowed; }
+  button.secondary { background: #374151; }
+  button.secondary:hover:not(:disabled) { background: #4b5563; }
+  .row { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
+  #status-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #ef4444; display: inline-block;
+  }
+  #status-dot.connected { background: #22c55e; }
+  canvas {
+    border: 2px dashed #2d3142;
+    border-radius: 8px;
+    image-rendering: pixelated;
+    width: 256px; height: 256px;
+    background: #000;
+  }
+  #log {
+    background: #0a0c12;
+    border: 1px solid #2d3142;
+    border-radius: 8px;
+    padding: .75rem;
+    font-family: 'Consolas', monospace;
+    font-size: .75rem;
+    height: 220px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin: 0;
+  }
+  .warn {
+    background: #451a03;
+    border: 1px solid #92400e;
+    color: #fbbf24;
+    border-radius: 8px;
+    padding: .75rem 1rem;
+    font-size: .8rem;
+    margin-bottom: 1rem;
+  }
+  .progress-track {
+    width: 100%; height: 8px; background: #2d3142;
+    border-radius: 4px; overflow: hidden; margin-top: .5rem;
+  }
+  #progress-bar {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #4f46e5, #a855f7);
+    transition: width .1s;
+  }
+  label.file-label {
+    background: #374151; border-radius: 8px;
+    padding: .6rem 1.2rem; font-size: .9rem; font-weight: 600;
+    cursor: pointer; display: inline-block;
+  }
+  label.file-label:hover { background: #4b5563; }
+  input[type=file] { display: none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>⌨️ Titorion Saiph — Screen Tool</h1>
+  <div class="subtitle">Envie imagens para a tela 128×128 do teclado · VID 0x379A / PID 0x0920</div>
+
+  <div class="warn">
+    ⚠️ <b>Use por sua conta e risco.</b> Esta ferramenta replica o protocolo do driver oficial,
+    mas mexer com firmware/periféricos sempre carrega algum risco. Feche o software oficial da
+    Titorion antes de usar.
+  </div>
+
+  <div class="card">
+    <h2>1. Conexão</h2>
+    <div class="row">
+      <button id="btn-connect">Conectar teclado</button>
+      <span><span id="status-dot"></span> <span id="status-text">desconectado</span></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2. Imagem</h2>
+    <div class="row" style="align-items:flex-start">
+      <canvas id="preview" width="128" height="128"></canvas>
+      <div>
+        <label class="file-label" for="file-input">Escolher imagem…</label>
+        <input type="file" id="file-input" accept="image/*">
+        <p style="color:#9ca3af;font-size:.8rem;max-width:280px">
+          A imagem será redimensionada para 128×128 (esticada) e convertida para RGB565.
+          Imagens quadradas funcionam melhor.
+        </p>
+        <div class="row">
+          <button id="btn-test" class="secondary" disabled>Teste: tela vermelha</button>
+          <button id="btn-test2" class="secondary" disabled>Teste: gradiente</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>3. Enviar</h2>
+    <div class="row">
+      <button id="btn-send" disabled>Enviar para a tela</button>
+    </div>
+    <div class="progress-track"><div id="progress-bar"></div></div>
+  </div>
+
+  <div class="card">
+    <h2>Log</h2>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ==================== Constantes do protocolo (extraídas do driver oficial) ====================
+const VID = 0x379A;          // 14234
+const PID = 0x0920;          // 2336  (Titorion Saiph)
+const USAGE_PAGE = 65415;    // 0xFF87 — fallback do driver para este modelo
+const USAGE = 32;            // 0x20
+const REPORT_ID = 6;         // o driver usa reportId 6 para este PID
+const REQ_LEN = 63;          // bytes de payload por relatório (reportId não conta)
+const CHUNK_DATA = REQ_LEN - 7;   // 56 bytes de dados por pacote
+const SCREEN_W = 128;
+const SCREEN_H = 128;
+
+// Comandos (tabela Ft.GamingKeyboard2 do driver)
+const CMD_INFO   = 0x40;     // sendScreenControlInformationPackage
+const CMD_DATA   = 0x41;     // sendScreenControlDataPacket
+const CMD_FINISH = 0x42;     // finishScreenControlDataPacket
+
+// ==================== Estado ====================
+let device = null;
+let hasImage = false;
+
+// ==================== UI helpers ====================
+const $ = id => document.getElementById(id);
+const logEl = $('log');
+function log(msg, cls) {
+  const time = new Date().toLocaleTimeString('pt-BR', { hour12: false });
+  logEl.textContent += `[${time}] ${msg}\n`;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function setStatus(connected, text) {
+  $('status-dot').className = connected ? 'connected' : '';
+  $('status-text').textContent = text;
+}
+function setProgress(pct) {
+  $('progress-bar').style.width = `${Math.min(100, Math.max(0, pct))}%`;
+}
+function updateButtons() {
+  const ready = !!device;
+  $('btn-test').disabled = !ready;
+  $('btn-test2').disabled = !ready;
+  $('btn-send').disabled = !ready || !hasImage;
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// ==================== Protocolo ====================
+
+// CRC-16/MODBUS — equivalente à função Lr() do driver.
+// Retorna [high, low] na mesma ordem usada nos pacotes A5 5A.
+function crc16(bytes) {
+  let crc = 0xFFFF;
+  for (const b of bytes) {
+    crc ^= b;
+    for (let i = 0; i < 8; i++) {
+      if (crc & 1) { crc >>>= 1; crc ^= 0xA001; }
+      else crc >>>= 1;
+    }
+  }
+  return [(crc >> 8) & 0xFF, crc & 0xFF];
+}
+
+// Monta um relatório de 63 bytes — equivalente à função Ui() do driver:
+// [cmd, paramLo, paramHi, dataLen, chkLo, chkHi, 0x00, ...data, 0-padding...]
+// O checksum é a soma simples de todos os bytes (com chk=0 durante o cálculo).
+function buildReport(cmd, paramLo, paramHi, data) {
+  const pkt = new Array(REQ_LEN).fill(0);
+  pkt[0] = cmd;
+  pkt[1] = paramLo;
+  pkt[2] = paramHi;
+  pkt[3] = data.length & 0xFF;
+  pkt[6] = 0;
+  for (let i = 0; i < data.length && (7 + i) < REQ_LEN; i++) {
+    pkt[7 + i] = data[i];
+  }
+  let sum = 0;
+  for (const b of pkt) sum += b;
+  pkt[4] = sum & 0xFF;
+  pkt[5] = (sum >> 8) & 0xFF;
+  return new Uint8Array(pkt);
+}
+
+// Envia um relatório e aguarda a resposta ecoando cmd e paramLo
+// (mesmo critério do driver: z[0]===K[0] && z[1]===K[1]).
+async function sendAndWait(report, timeoutMs = 2000) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      device.removeEventListener('inputreport', handler);
+      reject(new Error(`timeout aguardando resposta de cmd 0x${report[0].toString(16)}`));
+    }, timeoutMs);
+
+    function handler(event) {
+      const { data, reportId } = event;
+      if (![0, REPORT_ID, 7].includes(reportId)) return;
+      const resp = [];
+      for (let i = 0; i < data.byteLength; i++) resp.push(data.getUint8(i));
+      if (resp[0] === report[0] && resp[1] === report[1]) {
+        clearTimeout(timer);
+        device.removeEventListener('inputreport', handler);
+        resolve(resp);
+      }
+    }
+    device.addEventListener('inputreport', handler);
+    device.sendReport(REPORT_ID, report).catch(err => {
+      clearTimeout(timer);
+      device.removeEventListener('inputreport', handler);
+      reject(err);
+    });
+  });
+}
+
+// Envia com retry (Tb() do driver)
+async function sendWithRetry(report, retries = 3) {
+  let lastErr;
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await sendAndWait(report);
+    } catch (err) {
+      lastErr = err;
+      log(`  tentativa ${attempt}/${retries} falhou: ${err.message}`);
+      if (attempt < retries) await sleep(120);
+    }
+  }
+  throw lastErr;
+}
+
+// Envia um buffer arbitrário como um ou mais pacotes cmd (g9t/h9t do driver).
+async function sendBuffer(cmd, data, onProgress) {
+  const numChunks = Math.ceil(data.length / CHUNK_DATA);
+  for (let p = 0; p < numChunks; p++) {
+    const offset = p * CHUNK_DATA;
+    const chunk = data.slice(offset, offset + CHUNK_DATA);
+    const report = buildReport(cmd, offset & 0xFF, (offset >> 8) & 0xFF, chunk);
+    await sendWithRetry(report);
+    if (onProgress) onProgress((p + 1) / numChunks);
+  }
+}
+
+// Converte RGBA (canvas ImageData) para RGB565 big-endian — função ut() do driver.
+function rgbaToRgb565be(imageData) {
+  const src = imageData.data;
+  const out = new Uint8Array(imageData.width * imageData.height * 2);
+  for (let s = 0, d = 0; s < src.length; s += 4, d += 2) {
+    const r5 = src[s] >> 3;
+    const g6 = src[s + 1] >> 2;
+    const b5 = src[s + 2] >> 3;
+    const px = (r5 << 11) | (g6 << 5) | b5;
+    out[d] = (px >> 8) & 0xFF;   // big-endian: byte alto primeiro
+    out[d + 1] = px & 0xFF;
+  }
+  return out;
+}
+
+// Sequência completa de upload de imagem (branch "else" do driver, para o Saiph).
+async function uploadImageBytes(pixelBytes) {
+  const totalLen = pixelBytes.length; // 128*128*2 = 32768
+  log(`Iniciando upload de ${totalLen} bytes...`);
+
+  // 1) Handshake — cmd 0x40 com payload fixo A5 5A 10 00 01 <crc16(10 00 01)> 01
+  const hsCrc = crc16([0x10, 0x00, 0x01]);
+  const handshake = [0xA5, 0x5A, 0x10, 0x00, 0x01, hsCrc[0], hsCrc[1], 0x01];
+  log(`Handshake: ${handshake.map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
+  await sendBuffer(CMD_INFO, handshake);
+  await sleep(300);
+
+  // 2) Header — cmd 0x41 com A5 5A 0C lenHi lenLo crc16(0C lenHi lenLo)
+  const lenHi = (totalLen >> 8) & 0xFF;
+  const lenLo = totalLen & 0xFF;
+  const hdCrc = crc16([0x0C, lenHi, lenLo]);
+  const header = [0xA5, 0x5A, 0x0C, lenHi, lenLo, hdCrc[0], hdCrc[1]];
+  log(`Header: ${header.map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
+  await sendBuffer(CMD_DATA, header);
+
+  // 3) Dados da imagem — cmd 0x41 em chunks
+  log(`Enviando ${Math.ceil(totalLen / CHUNK_DATA)} pacotes de dados...`);
+  await sendBuffer(CMD_DATA, pixelBytes, p => setProgress(5 + p * 90));
+
+  // 4) Finish — cmd 0x42 sem dados
+  log('Finalizando (0x42)...');
+  await sendWithRetry(buildReport(CMD_FINISH, 0, 0, []));
+  setProgress(100);
+  log('✅ Upload concluído! Confira a tela do teclado.');
+}
+
+// ==================== Eventos ====================
+
+$('btn-connect').addEventListener('click', async () => {
+  try {
+    if (!navigator.hid) {
+      log('❌ WebHID não disponível. Use Chrome, Edge ou Opera no desktop.');
+      return;
+    }
+    const devices = await navigator.hid.requestDevice({
+      filters: [{ vendorId: VID, productId: PID, usagePage: USAGE_PAGE, usage: USAGE }]
+    });
+    if (devices.length === 0) {
+      log('Nenhum dispositivo selecionado.');
+      return;
+    }
+    device = devices[0];
+    if (!device.opened) await device.open();
+    log(`✅ Conectado: ${device.productName || 'Titorion'} (PID ${device.productId})`);
+    setStatus(true, 'conectado');
+    updateButtons();
+  } catch (err) {
+    log(`❌ Erro ao conectar: ${err.message}`);
+  }
+});
+
+navigator.hid && navigator.hid.addEventListener('disconnect', e => {
+  if (device && e.device === device) {
+    device = null;
+    setStatus(false, 'desconectado');
+    updateButtons();
+    log('Teclado desconectado.');
+  }
+});
+
+// Desenha imagem do usuário no canvas 128x128 (esticada)
+$('file-input').addEventListener('change', ev => {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const img = new Image();
+  img.onload = () => {
+    const ctx = $('preview').getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(img, 0, 0, SCREEN_W, SCREEN_H);
+    hasImage = true;
+    updateButtons();
+    log(`Imagem carregada: ${file.name} (${img.width}x${img.height} → 128x128)`);
+    URL.revokeObjectURL(img.src);
+  };
+  img.src = URL.createObjectURL(file);
+});
+
+async function sendCanvasPixels() {
+  const ctx = $('preview').getContext('2d');
+  const imageData = ctx.getImageData(0, 0, SCREEN_W, SCREEN_H);
+  const pixels = rgbaToRgb565be(imageData);
+  setProgress(2);
+  await uploadImageBytes(pixels);
+}
+
+$('btn-send').addEventListener('click', async () => {
+  $('btn-send').disabled = true;
+  try { await sendCanvasPixels(); }
+  catch (err) { log(`❌ Falha no envio: ${err.message}`); setProgress(0); }
+  finally { $('btn-send').disabled = !hasImage || !device; }
+});
+
+// ---- Testes que não dependem de imagem ----
+$('btn-test').addEventListener('click', async () => {
+  try {
+    const ctx = $('preview').getContext('2d');
+    ctx.fillStyle = '#f00';
+    ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+    hasImage = true; updateButtons();
+    await sendCanvasPixels();
+  } catch (err) { log(`❌ Falha no teste: ${err.message}`); setProgress(0); }
+});
+
+$('btn-test2').addEventListener('click', async () => {
+  try {
+    const ctx = $('preview').getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, SCREEN_W, SCREEN_H);
+    grad.addColorStop(0, '#ff0080');
+    grad.addColorStop(0.5, '#8000ff');
+    grad.addColorStop(1, '#0080ff');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+    hasImage = true; updateButtons();
+    await sendCanvasPixels();
+  } catch (err) { log(`❌ Falha no teste: ${err.message}`); setProgress(0); }
+});
+
+log('Pronto. Clique em "Conectar teclado" e selecione o dispositivo Titorion.');
+log('Dica: feche o software oficial Titorion antes, para não disputar o dispositivo HID.');
+</script>
+</body>
+</html>
