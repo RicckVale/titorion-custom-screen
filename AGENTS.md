@@ -12,9 +12,9 @@ reversa do driver web oficial (`https://titorion.i-game.tech/`).
   em qualquer código que fale com o teclado.
 - **Como o protocolo foi descoberto**: [`docs/reverse-engineering.md`](docs/reverse-engineering.md).
 - **Roadmap/ideias**: [`docs/ideas.md`](docs/ideas.md).
-- **Bundle original do driver oficial** (para consulta): `docs/reference/titorion-web-driver.js`.
-  Os nomes minificados mudam a cada build; busque pelas strings
-  (`sendScreenControlDataPacket`, `setkeyMessage`, `usagePage:65415`).
+- **Bundle original do driver oficial** fica só no site (`https://titorion.i-game.tech/`).
+ Não copie o `.js` para este repositório. Os nomes minificados mudam a cada build; busque pelas strings
+ (`sendScreenControlDataPacket`, `setkeyMessage`, `usagePage:65415`).
 
 ## Regras de segurança (importante)
 

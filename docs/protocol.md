@@ -1,7 +1,7 @@
 # Protocolo HID — Titorion Saiph (tela 128×128)
 
 > Engenharia reversa do driver web oficial `https://titorion.i-game.tech/`
-> (bundle `assets/index-*.js`, capturado em 2026-10-24, cópia em `docs/reference/titorion-web-driver.js`).
+> (bundle `assets/index-*.js`, lido em 2026-10-24). O arquivo do site não entra neste repositório.
 > Tudo aqui foi extraído do código-fonte minificado do próprio driver — não é suposição.
 
 ## 1. Identificação do dispositivo

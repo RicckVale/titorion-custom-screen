@@ -14,8 +14,8 @@ Registro da investigação (2026-10-24) para referência futura.
    - É um app React que fala com o teclado via **WebHID** (por isso exige Chrome/Edge/Opera).
 
 3. **Análise do bundle JS**
-   - Baixado `https://titorion.i-game.tech/assets/index-CUuVw08z.js` (~4,5 MB minificado).
-   - Cópia local: `docs/reference/titorion-web-driver.js`.
+   - Lido em `https://titorion.i-game.tech/assets/index-CUuVw08z.js` (~4,5 MB minificado).
+   - O bundle não fica neste repositório: é o programa oficial, e republicá-lo aqui seria cópia sem licença.
    - Achados principais:
      - `Ud` — registro de ~200 dispositivos suportados (vendorId/productId/reqLen/layout).
        O PID **2336** (nosso `0x0920`) está lá → confirmação de que é o Saiph.
