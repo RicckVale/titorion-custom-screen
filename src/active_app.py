@@ -42,6 +42,17 @@ def foreground_window_title() -> str:
     return buf.value
 
 
+def process_running(names: list[str]) -> bool:
+    """O executável está aberto, mesmo sem ser a janela da frente."""
+    wanted = {Path(name).name.lower() for name in names if name}
+    if not wanted:
+        return False
+    for proc in psutil.process_iter(["name"]):
+        if (proc.info["name"] or "").lower() in wanted:
+            return True
+    return False
+
+
 def foreground_matches(names: list[str]) -> bool:
     """A janela da frente é um dos executáveis pedidos."""
     stem = Path(foreground_process_name()).stem.lower()

@@ -385,8 +385,8 @@ class App(tk.Tk):
                     self.after(0, self.log, t("sent_line", text=text))
             except Exception as e:
                 self.after(0, self.log, t("monitor_error", error=e))
-                self.after(0, self._monitor_crashed)
-                return
+                time.sleep(2)
+                continue
             for _ in range(10):
                 if not self.monitor_on:
                     break
@@ -397,11 +397,6 @@ class App(tk.Tk):
         self.monitor_on = False
         self.btn_monitor.configure(text=t("start_monitor"), state="normal")
         self.log(t("monitor_stopped"))
-
-    def _monitor_crashed(self) -> None:
-        self.monitor_on = False
-        self.btn_monitor.configure(text=t("start_monitor"), state="normal")
-        self.set_status(False, "reconnect_status")
 
     def pick_image(self) -> None:
         path = filedialog.askopenfilename(

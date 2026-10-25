@@ -2,7 +2,7 @@
 
 import time
 
-from active_app import foreground_matches, programming_app
+from active_app import foreground_matches, process_running, programming_app
 from claude_quota import fetch_claude_usage
 from discord_status import discord_snapshot
 from i18n import current, t
@@ -51,7 +51,7 @@ def _league_frame(match: dict, lang: str) -> tuple:
     img = render_league(match)
     name = match["champion"]
     text = t("log_league", name=name)
-    return img, text, f"league:{lang}:{name}"
+    return img, text, f"league:{lang}:{name}:{match.get('level')}"
 
 
 # Tempo de cada cartaz quando a chamada divide a tela com outra prioridade.
@@ -64,9 +64,15 @@ def _turn(frames: list[tuple]) -> tuple:
 
 
 def _league_now(cfg: dict, lang: str) -> tuple | None:
-    """Campeão quando a partida está na frente. None fora do jogo ou sem resposta."""
+    """Campeão da partida aberta. None fora do jogo ou sem resposta.
+
+    Vale com o processo do jogo rodando, não só quando a janela está na frente.
+    O cliente fechado não entra: o executável da partida é outro.
+    """
     league_apps = cfg.get("leagueApps") or []
-    if not league_apps or not foreground_matches(league_apps):
+    if not league_apps:
+        return None
+    if not foreground_matches(league_apps) and not process_running(league_apps):
         return None
     match = league_champion(cfg.get("leagueLiveUrl") or "")
     if not match:
@@ -129,7 +135,9 @@ def build_frame() -> tuple:
     """
     cfg = load_screen_config()
     lang = current()
-    # Partida na frente fica no campeão. A chamada do Discord não cobre o jogo.
+    # Cursor e Claude na frente continuam na frente. No resto, a partida aberta fica.
+    if programming_app(cfg["programmingApps"]):
+        return _other_frame(cfg, lang)
     league = _league_now(cfg, lang)
     if league is not None:
         return league
