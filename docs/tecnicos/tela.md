@@ -88,7 +88,46 @@ O Spotify (`src/spotify_now.py`, lista `spotifyApps`) mostra a faixa da sessão 
 
 O League (`src/lol_match.py`, lista `leagueApps`) mostra o campeão da partida quando a janela do jogo está na frente e a partida responde em `leagueLiveUrl`. O nome e o nível vêm da partida. A resposta não diz se uma skill está pronta, e o comando de luz do teclado ainda não foi capturado, então as teclas não mudam de cor.
 
-Números de conta (cota do Cursor, limite do Claude) vêm da sessão local da pessoa. Não grave token, cookie nem porcentagem fixa no código.
+Números de conta (cota do Cursor, limite do Claude) vêm da sessão local da pessoa. Não grave token, cookie nem porcentagem fixa no código. Uma leitura fica em cache por 60 segundos. Se a sessão não puder ser lida, o cartaz ainda sai e o log da bandeja diz que a cota não foi lida.
+
+### Cursor
+
+O editor guarda o login em `%APPDATA%\Cursor\User\globalStorage\state.vscdb`, na chave `cursorAuth/accessToken`. O Screen Studio abre esse banco só para leitura e envia o token como cabeçalho Bearer. Ele não copia o token para este projeto.
+
+O pedido é um POST para a URL em `config/screen.json` (`usageUrl`), corpo `{}`, com `Content-Type: application/json` e `Connect-Protocol-Version: 1`.
+
+| Na tela | Campo |
+|---|---|
+| Incluído, no canto | `planUsage.includedSpend` dividido por `planUsage.limit` |
+| API | `planUsage.apiPercentUsed` |
+| Auto, na frente | `planUsage.autoPercentUsed` |
+| Dias restantes | `billingCycleEnd`, convertido em dias inteiros |
+
+Esse endpoint devolve porcentagens do período de cobrança. Ele não devolve um contador bruto de tokens.
+
+### Claude
+
+O aplicativo de desktop guarda a sessão do claude.ai em `%LOCALAPPDATA%\Claude-Data\<profile>\`. O Screen Studio escolhe o perfil que tem `Network\Cookies` e `Local State`, usando o arquivo de cookies gravado por último. O id da organização é o cookie `lastActiveOrg`. O cookie de sessão precisa estar presente. Nenhum desses valores é gravado neste repositório.
+
+Com o Claude aberto, ele trava o banco de cookies. O programa então lê o arquivo pelo handle que o aplicativo já tem. A chave em `Local State` é aberta com o DPAPI do Windows, e cada valor de cookie é decifrado com essa chave. Cookies de outros sites são ignorados.
+
+O pedido é um GET para a URL em `config/screen.json` (`claudeUsageUrl`), com `{org}` trocado por essa organização. A chamada é feita com um cliente parecido com o navegador. Uma biblioteca HTTP comum é barrada pela Cloudflare antes do JSON de uso voltar.
+
+| Na tela | Campo |
+|---|---|
+| Semana, todos os modelos, na frente | `limits[]` em que `kind` é `weekly_all`, campo `percent`. Se essa lista faltar, `seven_day.utilization` |
+| Sessão, embaixo | `limits[]` em que `kind` é `session`, campo `percent`. Se essa lista faltar, `five_hour.utilization` |
+| Tempo até reiniciar, no adesivo | `resets_at` do limite semanal, mostrado em minutos, horas ou dias |
+
+Uma organização que só tem acesso de API, e não a sessão do chat, não devolve esse uso. A janela do Claude precisa ser a da frente.
+
+### Discord, Spotify e League
+
+Online no Discord significa uma conexão TCP ativa. Em chamada significa que o log de voz do próprio aplicativo terminou em conectado. O microfone é a sessão de captura do Windows desse processo, e só aparece durante a chamada.
+
+O Spotify lê a sessão de mídia do Windows. Sem conta e sem token. O título quebra em duas linhas. Um nome maior é cortado com `..`.
+
+No League, o nome da foto de exemplo não é fixo. No teclado, é o campeão que a partida aberta devolve.
 
 ## Conferir sem o teclado
 
@@ -111,3 +150,4 @@ No teclado, o Screen Studio sobe pela bandeja (`Screen Studio.bat`). A janela n�
 - 24/10/2026 — A chamada do Discord deixa de travar a tela. O cartaz reveza com a outra prioridade, cerca de 10 segundos cada.
 - 24/10/2026 — Cartaz das duas magias de invocador com a janela do League na frente. O nome sai da partida local. Sem recarga e sem comando de LED.
 - 24/10/2026 — O cartaz do League passou a mostrar o campeão da partida, com o nível no adesivo. As magias saíram da tela.
+- 24/10/2026 — Os campos de cota do Cursor e do Claude, e a leitura do Discord, saíram do README e ficaram neste guia.
