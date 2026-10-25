@@ -82,9 +82,11 @@ Comando novo, fora de `0x40` / `0x41` / `0x42` e das páginas já documentadas, 
 
 `src/active_app.py` olha a janela da frente, não uma janela aberta atrás. O nome do executável entra em `config/screen.json`, em `programmingApps`. Aí `build_frame()` pode desenhar uma tela só para aquele app.
 
-O Discord é a exceção da chamada de voz. Com a janela do Discord na frente, o cartaz mostra online, conversa e microfone (`src/discord_status.py`, lista `discordApps`). Se houver uma conversa de voz, esse cartaz passa na frente do relógio e das telas do Cursor e do Claude. Ao sair da conversa, volta quem está na frente.
+O Discord (`src/discord_status.py`, lista `discordApps`) mostra online, conversa e microfone quando a janela dele está na frente. Numa chamada de voz, esse cartaz reveza com o que as outras regras escolheriam (Claude, Cursor, Spotify, o campeão ou o relógio), cerca de 10 segundos cada. Ao sair da conversa, fica quem está na frente.
 
-O Spotify (`src/spotify_now.py`, lista `spotifyApps`) mostra a faixa da sessão de mídia do Windows. Tocando, ele troca o relógio. Com a janela do Spotify na frente, mostra também pausa ou a ausência de faixa. Cursor, Claude e a chamada do Discord continuam na frente.
+O Spotify (`src/spotify_now.py`, lista `spotifyApps`) mostra a faixa da sessão de mídia do Windows. Tocando, ele troca o relógio. Com a janela do Spotify na frente, mostra também pausa ou a ausência de faixa. Cursor, Claude e a partida do League na frente continuam na frente. Na chamada do Discord, o Spotify entra na vez dele quando teria trocado o relógio.
+
+O League (`src/lol_match.py`, lista `leagueApps`) mostra o campeão da partida quando a janela do jogo está na frente e a partida responde em `leagueLiveUrl`. O nome e o nível vêm da partida. A resposta não diz se uma skill está pronta, e o comando de luz do teclado ainda não foi capturado, então as teclas não mudam de cor.
 
 Números de conta (cota do Cursor, limite do Claude) vêm da sessão local da pessoa. Não grave token, cookie nem porcentagem fixa no código.
 
@@ -106,3 +108,6 @@ No teclado, o Screen Studio sobe pela bandeja (`Screen Studio.bat`). A janela n�
 - 24/10/2026 — Cartaz do Discord (online, conversa, microfone). A chamada de voz tem prioridade sobre o relógio e as outras telas.
 - 24/10/2026 — Cartaz do Spotify com a faixa atual. Tocando, substitui o relógio.
 - 24/10/2026 — A conversa do Discord passa a ser lida do último estado de voz do log do app. O UDP sem endereço remoto não marcava a chamada.
+- 24/10/2026 — A chamada do Discord deixa de travar a tela. O cartaz reveza com a outra prioridade, cerca de 10 segundos cada.
+- 24/10/2026 — Cartaz das duas magias de invocador com a janela do League na frente. O nome sai da partida local. Sem recarga e sem comando de LED.
+- 24/10/2026 — O cartaz do League passou a mostrar o campeão da partida, com o nível no adesivo. As magias saíram da tela.

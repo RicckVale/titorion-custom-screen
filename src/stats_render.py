@@ -31,6 +31,8 @@ CLAUDE = (219, 112, 76)
 BLURPLE = (88, 101, 242)
 # Verde do Spotify, brilhante o bastante para texto preto.
 SPOTIFY = (29, 185, 84)
+# Azul do cartaz das magias. Texto branco em cima.
+LEAGUE = (47, 80, 180)
 
 
 @lru_cache(maxsize=8)
@@ -336,6 +338,30 @@ def render_spotify(track: dict) -> Image.Image:
         font=_display(_fit_text(draw, who, 13, 104)),
         fill=INK, anchor="mm",
     )
+    return img
+
+
+def render_league(match: dict) -> Image.Image:
+    """Nome do campeão em destaque. O nível fica no adesivo quando a partida manda."""
+    img = Image.new("RGB", (SCREEN_W, SCREEN_H), PAPER)
+    draw = ImageDraw.Draw(img)
+    name = (match.get("champion") or "").strip()
+    level = match.get("level")
+    if isinstance(level, int):
+        _block(draw, (4, 4, 84, 26), LEAGUE, shadow=2)
+        draw.text((44, 15), t("league_name"), font=_display(13), fill=WHITE, anchor="mm")
+        _block(draw, (90, 4, 122, 26), YELLOW, shadow=2)
+        draw.text((106, 15), str(level), font=_display(14), fill=INK, anchor="mm")
+    else:
+        _block(draw, (4, 4, 120, 26), LEAGUE, shadow=2)
+        draw.text((62, 15), t("league_name"), font=_display(14), fill=WHITE, anchor="mm")
+    _block(draw, (4, 34, 120, 120), YELLOW)
+    lines = _wrap_lines(draw, name, 22, 104, 3)
+    if not lines:
+        lines = [name]
+    top = 78 - (len(lines) - 1) * 14
+    for index, line in enumerate(lines):
+        draw.text((62, top + index * 28), line, font=_display(22), fill=INK, anchor="mm")
     return img
 
 

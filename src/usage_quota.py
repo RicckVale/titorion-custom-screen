@@ -33,6 +33,7 @@ def load_screen_config() -> dict:
         language = "pt"
     discord_apps = data.get("discordApps") or []
     spotify_apps = data.get("spotifyApps") or []
+    league_apps = data.get("leagueApps") or []
     return {
         "programmingApps": list(apps),
         "usageUrl": url,
@@ -40,6 +41,8 @@ def load_screen_config() -> dict:
         "language": language,
         "discordApps": [str(name) for name in discord_apps if str(name).strip()],
         "spotifyApps": [str(name) for name in spotify_apps if str(name).strip()],
+        "leagueApps": [str(name) for name in league_apps if str(name).strip()],
+        "leagueLiveUrl": str(data.get("leagueLiveUrl") or "").strip(),
     }
 
 
