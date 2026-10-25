@@ -5,7 +5,7 @@ alwaysApply: true
 
 # README
 
-O README está em inglês. Cada tela do teclado aparece numa tabela Markdown de **três colunas**, com o caminho `assets/preview-....png`.
+O README está em português. Cada tela do teclado aparece numa tabela Markdown de **três colunas**, com o caminho `assets/preview-....png`. O antes/depois da foto é a única tabela de duas colunas.
 
 - Uma foto sozinha, uma tabela de uma coluna, ou uma imagem fora da tabela estica e quebra a página. Não faça isso.
 - Tela com um estado só entra numa linha de três, ao lado das outras. Discord e Spotify já ocupam uma linha de três porque têm três estados.
@@ -14,7 +14,7 @@ O README está em inglês. Cada tela do teclado aparece numa tabela Markdown de 
 - Não use `./assets/`. O caminho é `assets/preview-nome.png`.
 
 ```markdown
-| Cursor | Claude | Clock, CPU and RAM |
+| Cursor | Claude | Relógio, CPU e RAM |
 |---|---|---|
-| ![Cursor quota](assets/preview-cursor.png) | ![Claude quota](assets/preview-claude.png) | ![Clock, CPU and RAM](assets/preview-stats.png) |
+| ![Cota do Cursor](assets/preview-cursor.png) | ![Cota do Claude](assets/preview-claude.png) | ![Relógio, CPU e RAM](assets/preview-stats.png) |
 ```
