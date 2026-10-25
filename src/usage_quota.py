@@ -32,12 +32,14 @@ def load_screen_config() -> dict:
     if language not in ("pt", "en"):
         language = "pt"
     discord_apps = data.get("discordApps") or []
+    spotify_apps = data.get("spotifyApps") or []
     return {
         "programmingApps": list(apps),
         "usageUrl": url,
         "claudeUsageUrl": claude_url,
         "language": language,
         "discordApps": [str(name) for name in discord_apps if str(name).strip()],
+        "spotifyApps": [str(name) for name in spotify_apps if str(name).strip()],
     }
 
 

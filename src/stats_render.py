@@ -29,6 +29,8 @@ WHITE = (255, 255, 255)
 CLAUDE = (219, 112, 76)
 # Blurple do cabeçalho do Discord, para o cartaz ser reconhecível.
 BLURPLE = (88, 101, 242)
+# Verde do Spotify, brilhante o bastante para texto preto.
+SPOTIFY = (29, 185, 84)
 
 
 @lru_cache(maxsize=8)
@@ -263,6 +265,78 @@ def _fit_text(draw: ImageDraw.ImageDraw, text: str, max_size: int, max_width: in
     while size > 11 and draw.textlength(text, font=_display(size)) > max_width:
         size -= 1
     return size
+
+
+def _wrap_lines(draw: ImageDraw.ImageDraw, text: str, size: int,
+                max_width: int, max_lines: int) -> list[str]:
+    words = [part for part in text.split() if part]
+    if not words:
+        return []
+    lines: list[str] = []
+    current = ""
+    for word in words:
+        trial = word if not current else f"{current} {word}"
+        if draw.textlength(trial, font=_display(size)) <= max_width:
+            current = trial
+            continue
+        if current:
+            lines.append(current)
+        current = word
+        if len(lines) >= max_lines:
+            break
+    if current and len(lines) < max_lines:
+        lines.append(current)
+    if len(lines) > max_lines:
+        lines = lines[:max_lines]
+    used = " ".join(lines)
+    if used != " ".join(words) and lines:
+        last = lines[-1]
+        while last and draw.textlength(last + "..", font=_display(size)) > max_width:
+            last = last[:-1]
+        lines[-1] = (last + "..") if last else ".."
+    return lines
+
+
+def render_spotify(track: dict) -> Image.Image:
+    """Nome da faixa em destaque, artista embaixo, estado no topo do cartaz."""
+    img = Image.new("RGB", (SCREEN_W, SCREEN_H), PAPER)
+    draw = ImageDraw.Draw(img)
+    playing = bool(track.get("playing"))
+    title = (track.get("title") or "").strip()
+    artist = (track.get("artist") or "").strip()
+    has_track = bool(title)
+
+    _block(draw, (4, 4, 120, 26), SPOTIFY, shadow=2)
+    draw.text((62, 15), t("spotify_name"), font=_display(14), fill=INK, anchor="mm")
+
+    if not has_track:
+        _block(draw, (4, 34, 120, 120), YELLOW)
+        label = t("spotify_empty")
+        draw.text(
+            (62, 78), label,
+            font=_display(_fit_text(draw, label, 18, 100)),
+            fill=INK, anchor="mm",
+        )
+        return img
+
+    _block(draw, (4, 34, 120, 96), GREEN if playing else YELLOW)
+    state = t("spotify_playing") if playing else t("spotify_paused")
+    draw.text((62, 40), state, font=_display(11), fill=INK, anchor="mt")
+    lines = _wrap_lines(draw, title, 16, 104, 2)
+    if not lines:
+        lines = _wrap_lines(draw, title, 12, 104, 2)
+    top = 58 if len(lines) > 1 else 66
+    for index, line in enumerate(lines):
+        draw.text((62, top + index * 18), line, font=_display(16), fill=INK, anchor="mt")
+
+    _block(draw, (4, 102, 120, 121), PAPER, shadow=2)
+    who = artist or state
+    draw.text(
+        (62, 111), who,
+        font=_display(_fit_text(draw, who, 13, 104)),
+        fill=INK, anchor="mm",
+    )
+    return img
 
 
 def render_discord(state: dict) -> Image.Image:

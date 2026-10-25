@@ -84,6 +84,8 @@ Comando novo, fora de `0x40` / `0x41` / `0x42` e das páginas já documentadas, 
 
 O Discord é a exceção da chamada de voz. Com a janela do Discord na frente, o cartaz mostra online, conversa e microfone (`src/discord_status.py`, lista `discordApps`). Se houver uma conversa de voz, esse cartaz passa na frente do relógio e das telas do Cursor e do Claude. Ao sair da conversa, volta quem está na frente.
 
+O Spotify (`src/spotify_now.py`, lista `spotifyApps`) mostra a faixa da sessão de mídia do Windows. Tocando, ele troca o relógio. Com a janela do Spotify na frente, mostra também pausa ou a ausência de faixa. Cursor, Claude e a chamada do Discord continuam na frente.
+
 Números de conta (cota do Cursor, limite do Claude) vêm da sessão local da pessoa. Não grave token, cookie nem porcentagem fixa no código.
 
 ## Conferir sem o teclado
@@ -102,3 +104,4 @@ No teclado, o Screen Studio sobe pela bandeja (`Screen Studio.bat`). A janela n�
 - 24/10/2026 — A logo do programa passou a ser o nome TITORION CUSTOM SCREEN em pixel (`src/brand_mark.py`). Na bandeja, o recorte é o monograma TC.
 - 24/10/2026 — Idioma pt/en na janela e nos cartazes (`src/i18n.py`, chave `language` em `config/screen.json`).
 - 24/10/2026 — Cartaz do Discord (online, conversa, microfone). A chamada de voz tem prioridade sobre o relógio e as outras telas.
+- 24/10/2026 — Cartaz do Spotify com a faixa atual. Tocando, substitui o relógio.

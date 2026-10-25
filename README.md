@@ -26,6 +26,7 @@ Screen Studio sits in the Windows tray, with the project logo, and follows the f
 | Cursor        | Account quota: Auto in front, API next, included in the corner. Green up to 50%, yellow up to 75%, red above that.                           |
 | Claude        | Claude limit: the week (all models) in front, the session below, time until reset on the sticker. Header in the app's orange, with the star. |
 | Discord       | Online, in a voice conversation or not, and the mic (open, muted, or not in a call). Header in blurple.                                      |
+| Spotify       | The track that is playing: title, artist, and whether it is playing or paused. Header in Spotify green.                                     |
 | Anything else | Clock, CPU, and RAM, on the same kind of card.                                                                                               |
 
 The same three cards, at the size the keyboard draws them:
@@ -49,6 +50,24 @@ With the Discord window in front, the keyboard shows that card: **ON** or **OFF*
 A voice conversation takes the screen over the clock and over Cursor or Claude. Leave the call and the keyboard goes back to whatever is in front.
 
 Online means Discord has a live TCP connection. In a call means it has a UDP socket to another machine. The mic is the Windows capture session of that process, and it is only shown during the call: open, muted, or no capture session. Nothing from the account is written into this repository.
+
+### Spotify
+
+The card reads the Windows media session for the apps in `spotifyApps`. No Spotify account and no token.
+
+Playing:
+
+![Spotify playing](./assets/preview-spotify.png)
+
+Paused, with Spotify in front:
+
+![Spotify paused](./assets/preview-spotify-paused.png)
+
+Nothing playing:
+
+![Spotify empty](./assets/preview-spotify-empty.png)
+
+While a track is **playing**, this card replaces the clock. Cursor, Claude, and a Discord voice call stay in front of it. If Spotify is the front window, the card also shows a paused track, or **SEM MUSICA** / **NOTHING** when there is no track. The title wraps to two lines. A longer name is cut with `..`.
 
 ### Cursor
 
@@ -156,6 +175,7 @@ src/app.py                 tray and window
 src/i18n.py                Portuguese and English labels
 src/screen_frame.py        picks the image from the focused window
 src/discord_status.py      Discord online, call, and mic
+src/spotify_now.py         Spotify track from the Windows media session
 src/stats_render.py        draws the cards
 src/titorion_screen.py     screen protocol
 src/active_app.py          front window

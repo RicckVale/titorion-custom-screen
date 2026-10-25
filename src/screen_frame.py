@@ -4,7 +4,8 @@ from active_app import foreground_matches, programming_app
 from claude_quota import fetch_claude_usage
 from discord_status import discord_snapshot
 from i18n import current, t
-from stats_render import collect_stats, render, render_discord, render_usage
+from spotify_now import spotify_now
+from stats_render import collect_stats, render, render_discord, render_spotify, render_usage
 from usage_quota import fetch_period_usage, load_screen_config
 
 
@@ -25,6 +26,22 @@ def _discord_frame(snap: dict, lang: str) -> tuple:
     call_mode = "call" if snap["in_call"] else "idle"
     net = "on" if snap["online"] else "off"
     return img, text, f"discord:{net}:{call_mode}:{mic_mode}:{lang}"
+
+
+def _spotify_frame(track: dict, lang: str) -> tuple:
+    img = render_spotify(track)
+    if track.get("playing"):
+        state = t("spotify_playing")
+        mode_state = "play"
+    elif track.get("title"):
+        state = t("spotify_paused")
+        mode_state = "pause"
+    else:
+        state = t("spotify_empty")
+        mode_state = "empty"
+    title = track.get("title") or state
+    text = t("log_spotify", state=state, title=title)
+    return img, text, f"spotify:{mode_state}:{lang}:{title}"
 
 
 def build_frame() -> tuple:
@@ -68,6 +85,12 @@ def build_frame() -> tuple:
         else:
             text = t("log_cursor_miss", label=label)
         return img, text, f"limite:{app}:{lang}"
+    spotify_apps = cfg.get("spotifyApps") or []
+    if spotify_apps:
+        track = spotify_now(spotify_apps)
+        # Tocando, o cartaz troca o relógio. Cursor, Claude e a chamada do Discord ficam na frente.
+        if track["playing"] or foreground_matches(spotify_apps):
+            return _spotify_frame(track, lang)
     stats = collect_stats()
     img = render(stats)
     text = (

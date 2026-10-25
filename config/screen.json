@@ -6,6 +6,9 @@
   "discordApps": [
     "Discord.exe"
   ],
+  "spotifyApps": [
+    "Spotify.exe"
+  ],
   "usageUrl": "https://api2.cursor.sh/aiserver.v1.DashboardService/GetCurrentPeriodUsage",
   "claudeUsageUrl": "https://claude.ai/api/organizations/{org}/usage",
   "language": "pt"

@@ -5,3 +5,5 @@ cryptography>=44.0.0
 curl_cffi>=0.16.0
 pystray>=0.19.5
 pycaw>=20251001
+winrt-Windows.Media.Control>=3.2.1
+winrt-runtime>=4.0.2
