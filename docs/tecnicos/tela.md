@@ -105,3 +105,4 @@ No teclado, o Screen Studio sobe pela bandeja (`Screen Studio.bat`). A janela n�
 - 24/10/2026 — Idioma pt/en na janela e nos cartazes (`src/i18n.py`, chave `language` em `config/screen.json`).
 - 24/10/2026 — Cartaz do Discord (online, conversa, microfone). A chamada de voz tem prioridade sobre o relógio e as outras telas.
 - 24/10/2026 — Cartaz do Spotify com a faixa atual. Tocando, substitui o relógio.
+- 24/10/2026 — A conversa do Discord passa a ser lida do último estado de voz do log do app. O UDP sem endereço remoto não marcava a chamada.
