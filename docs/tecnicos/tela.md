@@ -88,7 +88,7 @@ O Discord (`src/discord_status.py`, lista `discordApps`) mostra online, conversa
 
 O Spotify (`src/spotify_now.py`, lista `spotifyApps`) mostra a faixa da sessão de mídia do Windows. Tocando, ele troca o relógio. Com a janela do Spotify na frente, mostra também pausa ou a ausência de faixa. Cursor, Claude e a partida do League na frente continuam na frente. Na chamada do Discord, o Spotify entra na vez dele quando teria trocado o relógio.
 
-O League (`src/lol_match.py`, lista `leagueApps`) mostra o campeão enquanto o executável da partida está aberto e a partida responde em `leagueLiveUrl`. Não precisa ser a janela da frente. Cursor ou Claude na frente continuam na frente. O nome e o nível vêm da partida. Uma chamada do Discord não cobre esse cartaz. A resposta não diz se uma skill está pronta, e o comando de luz do teclado ainda não foi capturado, então as teclas não mudam de cor. Um erro de envio não desliga o monitor: ele tenta de novo.
+O League (`src/lol_match.py`, lista `leagueApps`) mostra o campeão enquanto o executável da partida está aberto e a partida responde em `leagueLiveUrl`. Não precisa ser a janela da frente. Cursor ou Claude na frente continuam na frente. O nome e o nível vêm da partida. Uma partida nova é outro processo: o campeão anterior sai na hora. Se a leitura piscar no meio do jogo, o último campeão continua na tela. Quando o nome muda, e de novo quando a partida fecha, o Screen Studio esvazia as imagens guardadas e grava o cartaz seguinte. Sem isso a foto do campeão continua na tela. O relógio roxo pode aparecer nesse intervalo. Uma chamada do Discord não cobre esse cartaz. A resposta não diz se uma skill está pronta, e o comando de luz do teclado ainda não foi capturado, então as teclas não mudam de cor. Um erro de envio não desliga o monitor: ele tenta de novo.
 
 Números de conta (cota do Cursor, limite do Claude) vêm da sessão local da pessoa. Não grave token, cookie nem porcentagem fixa no código. Uma leitura fica em cache por 60 segundos. Se a sessão não puder ser lida, o cartaz ainda sai e o log da bandeja diz que a cota não foi lida.
 
@@ -159,3 +159,5 @@ No teclado, o Screen Studio sobe pela bandeja (`Screen Studio.bat`). A janela n�
 - 24/10/2026 — O cartaz do campeão entra com a partida aberta, mesmo sem a janela do jogo na frente. Um erro de envio não para o monitor.
 - 24/10/2026 — Esvaziar tela apaga as imagens guardadas com `0x0E` e grava o cartaz atual de novo, para quando um reinício deixa a imagem velha presa.
 - 24/10/2026 — Os cartazes do Discord e do Spotify ganharam a marca no cabeçalho, no mesmo lugar da marca do League.
+- 24/10/2026 — Troca de campeão esvazia a galeria antes de gravar. Uma leitura que pisca no meio da mesma partida não tira o cartaz.
+- 25/10/2026 — Ao fechar a partida, a imagem do campeão sai da tela. A galeria é esvaziada e o cartaz seguinte entra.

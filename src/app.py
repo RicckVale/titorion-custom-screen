@@ -71,6 +71,16 @@ def _card(parent, title: str) -> tk.Frame:
     return card
 
 
+def _champion_name(mode: str) -> str:
+    """Nome no modo league:idioma:nome:nível. Vazio fora do cartaz do campeão."""
+    if not mode.startswith("league:"):
+        return ""
+    parts = mode.split(":")
+    if len(parts) < 4:
+        return ""
+    return ":".join(parts[2:-1])
+
+
 class App(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
@@ -421,6 +431,7 @@ class App(tk.Tk):
         last_bytes: bytes | None = None
         last_sent = 0.0
         last_mode = ""
+        last_champion = ""
         while self.monitor_on:
             try:
                 img, text, mode = build_frame()
@@ -429,9 +440,18 @@ class App(tk.Tk):
                 switched = mode != last_mode or self._force_frame
                 # Troca de janela ou de idioma sai na hora. O mesmo cartaz espera o intervalo.
                 due = switched or now - last_sent >= interval
+                champion = _champion_name(mode)
+                champion_changed = bool(champion) and champion != last_champion
+                # Sem a limpeza, a imagem do campeão continua na tela depois que o jogo fecha.
+                leaving_champion = bool(last_champion) and not champion
                 if digest != last_bytes and due and now - last_sent >= 2:
                     assert self.screen is not None
-                    self.screen.send_image(img)
+                    if champion_changed or leaving_champion:
+                        self.after(0, self.log, t("resetting"))
+                        self.screen.reset_gallery(img)
+                        last_champion = champion
+                    else:
+                        self.screen.send_image(img)
                     last_bytes = digest
                     last_sent = time.monotonic()
                     last_mode = mode

@@ -2,7 +2,7 @@
 
 import time
 
-from active_app import foreground_matches, process_running, programming_app
+from active_app import foreground_matches, matching_pid, programming_app
 from claude_quota import fetch_claude_usage
 from discord_status import discord_snapshot
 from i18n import current, t
@@ -72,9 +72,10 @@ def _league_now(cfg: dict, lang: str) -> tuple | None:
     league_apps = cfg.get("leagueApps") or []
     if not league_apps:
         return None
-    if not foreground_matches(league_apps) and not process_running(league_apps):
+    game_pid = matching_pid(league_apps)
+    if game_pid is None:
         return None
-    match = league_champion(cfg.get("leagueLiveUrl") or "")
+    match = league_champion(cfg.get("leagueLiveUrl") or "", game_pid)
     if not match:
         return None
     return _league_frame(match, lang)

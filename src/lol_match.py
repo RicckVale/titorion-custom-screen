@@ -16,18 +16,32 @@ import urllib.request
 
 _CACHE: dict | None = None
 _CACHE_AT = 0.0
-_MISS_TTL_S = 4.0
-_HIT_TTL_S = 5.0
+_TTL_S = 1.0
+_SEEN_PID: int | None = None
+_LAST_GOOD: dict | None = None
 _SSL = ssl._create_unverified_context()
 
 
-def league_champion(live_url: str) -> dict | None:
-    """Campeão da pessoa na partida, ou None fora dela."""
-    global _CACHE, _CACHE_AT
+def league_champion(live_url: str, game_pid: int | None = None) -> dict | None:
+    """Campeão da pessoa na partida, ou None fora dela.
+
+    Um processo novo de partida descarta o campeão anterior. Se a leitura
+    piscar com a mesma partida aberta, o último campeão continua valendo
+    para a tela não sair no meio do jogo.
+    """
+    global _CACHE, _CACHE_AT, _SEEN_PID, _LAST_GOOD
+    if game_pid != _SEEN_PID:
+        _CACHE = None
+        _LAST_GOOD = None
+        _SEEN_PID = game_pid
     now = time.monotonic()
-    if _CACHE is not None and now - _CACHE_AT < (_HIT_TTL_S if _CACHE.get("ok") else _MISS_TTL_S):
+    if _CACHE is not None and now - _CACHE_AT < _TTL_S:
         return _CACHE.get("match")
     match = _read(live_url)
+    if match is None and game_pid and _LAST_GOOD is not None:
+        match = _LAST_GOOD
+    elif match is not None:
+        _LAST_GOOD = match
     _CACHE = {"ok": match is not None, "match": match}
     _CACHE_AT = now
     return match

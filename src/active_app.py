@@ -42,15 +42,22 @@ def foreground_window_title() -> str:
     return buf.value
 
 
-def process_running(names: list[str]) -> bool:
-    """O executável está aberto, mesmo sem ser a janela da frente."""
+def matching_pid(names: list[str]) -> int | None:
+    """PID do executável, mesmo sem ser a janela da frente. None se não estiver aberto."""
     wanted = {Path(name).name.lower() for name in names if name}
     if not wanted:
-        return False
-    for proc in psutil.process_iter(["name"]):
+        return None
+    for proc in psutil.process_iter(["name", "pid"]):
         if (proc.info["name"] or "").lower() in wanted:
-            return True
-    return False
+            pid = proc.info["pid"]
+            if isinstance(pid, int):
+                return pid
+    return None
+
+
+def process_running(names: list[str]) -> bool:
+    """O executável está aberto, mesmo sem ser a janela da frente."""
+    return matching_pid(names) is not None
 
 
 def foreground_matches(names: list[str]) -> bool:
