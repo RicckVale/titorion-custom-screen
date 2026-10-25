@@ -9,13 +9,11 @@ Registro da investigação (2026-10-24) para referência futura.
      com 2 interfaces de teclado, mouse, consumer control e 3 interfaces "vendor-defined".
    - 3 interfaces vendor = canal de configuração (tela, RGB, remap) separado do teclado HID normal.
 
-2. **Descoberta do driver oficial**
-   - Site da Titorion (`titorion.com.br/drivers`) aponta para o **driver web**: `https://titorion.i-game.tech/`
-   - É um app React que fala com o teclado via **WebHID** (por isso exige Chrome/Edge/Opera).
+2. **Canal de configuração**
+   - A tela não usa a interface comum de teclado. O canal é vendor-defined, via WebHID
+     (Chrome, Edge ou Opera).
 
-3. **Análise do bundle JS**
-   - Lido em `https://titorion.i-game.tech/assets/index-CUuVw08z.js` (~4,5 MB minificado).
-   - O bundle não fica neste repositório: é o programa oficial, e republicá-lo aqui seria cópia sem licença.
+3. **O que foi anotado**
    - Achados principais:
      - `Ud` — registro de ~200 dispositivos suportados (vendorId/productId/reqLen/layout).
        O PID **2336** (nosso `0x0920`) está lá → confirmação de que é o Saiph.
@@ -30,20 +28,16 @@ Registro da investigação (2026-10-24) para referência futura.
 
 4. **Validação**
    - CRC16 de `[0x10, 0x00, 0x01]` calculado = `[197, 177]` = `C5 B1` — exatamente os bytes
-     fixos do handshake no driver. Implementação confirmada bit a bit.
+     fixos do handshake. Implementação confirmada bit a bit.
 
 ## Ferramentas que valem para investigações futuras
 
-- **Chrome DevTools** no `titorion.i-game.tech`: breakpoint em `navigator.hid` / `sendReport`
-  mostra os bytes exatos de qualquer ação (remap de tecla, RGB, firmware...).
-- **Wireshark + USBPcap** no Windows: captura o tráfego USB enquanto o driver opera.
-- Busca no bundle: os nomes minificados mudam a cada build, mas as strings
-  (`sendScreenControlDataPacket`, `setkeyMessage`, `usagePage:65415`) permanecem —
-  são as melhores âncoras de busca.
+- **Wireshark + USBPcap** no Windows: captura o tráfego USB enquanto a tela é atualizada.
+- Não guarde neste repositório o programa de outra pessoa. Anote só o byte que foi conferido.
 
 ## Referências externas úteis
 
 - Protocolo primo documentado: "Reverse engineering the ROYUAN keyboard HID protocol" (dnim.dev)
   — família Attack Shark/Epomaker/Akko com abordagem parecida (WebHID + Electron).
 - Alerta de risco: Hackaday 2024-09 — dev bricou um XVX S-K80 enviando pacotes experimentais;
-  por isso aqui só replicamos fielmente a sequência oficial.
+  por isso aqui só replicamos a sequência já conferida.

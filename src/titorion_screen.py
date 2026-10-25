@@ -1,8 +1,8 @@
 """
 titorion_screen.py — Biblioteca do protocolo HID da tela do Titorion Saiph.
 
-Implementação fiel ao driver web oficial (titorion.i-game.tech), documentada
-em docs/protocol.md. Funciona em qualquer plataforma com hidapi.
+Implementação do protocolo da tela, documentada em docs/protocol.md.
+Funciona em qualquer plataforma com hidapi.
 
 Uso básico:
 
@@ -136,8 +136,8 @@ class TitorionScreen:
         if path is None:
             raise RuntimeError(
                 "Teclado Titorion não encontrado (VID 0x%04X / PID 0x%04X, "
-                "usagePage 0x%04X). Está conectado por cabo? O software oficial "
-                "está fechado?" % (VID, PID, USAGE_PAGE)
+                "usagePage 0x%04X). Está conectado por cabo? Outro programa "
+                "está usando o teclado?" % (VID, PID, USAGE_PAGE)
             )
         self._dev = hid.device()
         self._dev.open_path(path)

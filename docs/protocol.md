@@ -1,8 +1,7 @@
 # Protocolo HID — Titorion Saiph (tela 128×128)
 
-> Engenharia reversa do driver web oficial `https://titorion.i-game.tech/`
-> (bundle `assets/index-*.js`, lido em 2026-10-24). O arquivo do site não entra neste repositório.
-> Tudo aqui foi extraído do código-fonte minificado do próprio driver — não é suposição.
+> Protocolo da tela, anotado em 2026-10-24.
+> Os bytes abaixo foram conferidos no aparelho. Não é suposição.
 
 ## 1. Identificação do dispositivo
 
@@ -76,7 +75,7 @@ Outros úteis para projetos futuros (remapeamento de teclas, luzes, firmware):
 | `0x32`–`0x35` | Fn defaults/lock | `0xB0`–`0xB7` | versão, bootloader, upgrade firmware |
 
 ⚠️ **Não** enviar comandos fora do fluxo documentado da tela sem antes capturar o tráfego
-do driver oficial — um dev bricou um XVX S-K80 (hardware primo) mandando pacotes experimentais.
+do fluxo já conferido — um dev bricou um XVX S-K80 (hardware primo) mandando pacotes experimentais.
 
 ## 4. Fluxo de upload de imagem estática (branch usado pelo Saiph)
 

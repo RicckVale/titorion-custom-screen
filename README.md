@@ -4,21 +4,11 @@
 
 Fonte: https://github.com/RicckVale/titorion-custom-screen
 
-## Aviso
-
-Fiz isto por pura curiosidade. Eu não tenho, e este projeto não concede, direito autoral, marca ou qualquer outro direito da Titorion, da Shop Borges Comercial LTDA, ou de qualquer outra pessoa. O nome Titorion, o teclado Saiph e as marcas deles continuam deles. Nada aqui é filiado, endossado ou autorizado pela Titorion.
-
-Cursor, Claude, Discord, Spotify e League of Legends, e as marcas desses nomes, continuam dos respectivos donos. O programa só lê o que já está aberto neste computador para desenhar um cartaz. Não há afiliação com essas empresas.
-
-Se você rodar este software, faz isso por livre e espontânea vontade e por sua conta e risco. Ele fala com o teclado com o mesmo tipo de pacote de tela do driver web oficial. Uma escrita ruim ou interrompida pode travar o visor até você reconectar o cabo. Feche o aplicativo oficial da Titorion antes de conectar por aqui.
-
-O bundle do site oficial não está neste repositório. O que o programa envia está descrito em [`docs/protocol.md`](docs/protocol.md), sem o arquivo original.
-
 ## O que é
 
 Ferramentas caseiras para a telinha do teclado **Titorion Saiph** (USB VID `0x379A`, PID `0x0920`, produto `"Saiph Keyboard"`). A tela tem **128×128 pixels**, RGB565.
 
-O ponto de partida foi o driver web oficial, `https://titorion.i-game.tech/`. Um pacote novo, fora desse fluxo, não entra sem uma captura do driver oficial.
+O que este programa envia ao teclado está em [`docs/protocol.md`](docs/protocol.md). Um pacote novo, fora desse fluxo, não entra sem uma captura já conferida.
 
 A tela de fábrica, e a mesma foto com o cartaz do Claude nesse lugar:
 
@@ -121,7 +111,7 @@ Apagar a imagem que está na tela, ou ficar sem nenhuma, joga o teclado no reló
 
 ## Como rodar
 
-Você precisa de Windows, do teclado no USB, e do aplicativo oficial da Titorion **fechado**.
+Você precisa de Windows, do teclado no USB, e de nenhum outro programa usando o teclado.
 
 ### Screen Studio (uso do dia a dia)
 
@@ -192,4 +182,10 @@ tools/web/index.html       envio avulso no navegador
 
 ## Ainda não
 
-GIF animado, e remapear uma tecla por aplicativo. Esses comandos não foram capturados do driver oficial, então ficam de fora.
+GIF animado, e remapear uma tecla por aplicativo. Esses comandos ainda não foram capturados, então ficam de fora.
+
+## Aviso
+
+Fiz isto por pura curiosidade. Este projeto não é filiado, endossado nem autorizado por ninguém. As marcas citadas continuam dos respectivos donos. O programa só lê o que já está aberto neste computador para desenhar um cartaz.
+
+Se você rodar este software, faz isso por livre e espontânea vontade e por sua conta e risco. Uma escrita ruim ou interrompida pode travar o visor até você reconectar o cabo. Feche qualquer outro programa que esteja usando o teclado antes de conectar por aqui.

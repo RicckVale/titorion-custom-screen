@@ -101,9 +101,8 @@
   <div class="subtitle">Envie imagens para a tela 128×128 do teclado · VID 0x379A / PID 0x0920</div>
 
   <div class="warn">
-    ⚠️ <b>Use por sua conta e risco.</b> Esta ferramenta replica o protocolo do driver oficial,
-    mas mexer com firmware/periféricos sempre carrega algum risco. Feche o software oficial da
-    Titorion antes de usar.
+    ⚠️ <b>Use por sua conta e risco.</b> Mexer na tela do teclado sempre carrega algum risco.
+    Feche qualquer outro programa que esteja usando o teclado antes de conectar.
   </div>
 
   <div class="card">
@@ -150,10 +149,10 @@
 <script>
 'use strict';
 
-// ==================== Constantes do protocolo (extraídas do driver oficial) ====================
+// ==================== Constantes do protocolo da tela ====================
 const VID = 0x379A;          // 14234
 const PID = 0x0920;          // 2336  (Titorion Saiph)
-const USAGE_PAGE = 65415;    // 0xFF87 — fallback do driver para este modelo
+const USAGE_PAGE = 65415;    // 0xFF87 — interface de configuração deste modelo
 const USAGE = 32;            // 0x20
 const REPORT_ID = 6;         // o driver usa reportId 6 para este PID
 const REQ_LEN = 63;          // bytes de payload por relatório (reportId não conta)
@@ -423,7 +422,7 @@ $('btn-test2').addEventListener('click', async () => {
 });
 
 log('Pronto. Clique em "Conectar teclado" e selecione o dispositivo Titorion.');
-log('Dica: feche o software oficial Titorion antes, para não disputar o dispositivo HID.');
+log('Dica: feche outro programa que esteja usando o teclado, para não disputar o dispositivo HID.');
 </script>
 </body>
 </html>

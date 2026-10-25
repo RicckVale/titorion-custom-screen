@@ -76,7 +76,7 @@ Duas coisas derrubam a tela no relógio roxo (homepage `0x0B`):
 
 Não chame `delete_picture()` nem `switch_to_home_page()` no meio de uma troca. Não feche o processo no meio de um `send_image()`: o envio cortado trava o controlador até reconectar o teclado.
 
-Comando novo, fora de `0x40` / `0x41` / `0x42` e das páginas já documentadas, só depois de capturar o tráfego do driver oficial.
+Comando novo, fora de `0x40` / `0x41` / `0x42` e das páginas já documentadas, só depois de capturar o tráfego real.
 
 ## App em foco
 

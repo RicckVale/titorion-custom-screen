@@ -35,7 +35,7 @@ Arquitetura: um dict `{processo: gerador_de_imagem}` com fallback pra imagem pad
 Além da imagem, trocar o que as **teclas fazem** conforme o app:
 
 - O driver tem os comandos `0x17`/`0x18` (get/set keyMessage) e `0x30`/`0x31` (profiles).
-- **Antes de implementar**: capturar o tráfego do driver oficial trocando uma tecla
+- **Antes de implementar**: capturar o tráfego real trocando uma tecla
   (Wireshark/USBPcap ou breakpoint no `sendReport` do DevTools) e documentar o formato
   exato — **nunca chutar pacotes de escrita de keymap** (risco de travar o teclado).
 - Alternativa não-invasiva: camada de software com AutoHotkey/PowerToys trocando
