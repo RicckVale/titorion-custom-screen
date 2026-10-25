@@ -1,10 +1,7 @@
 """
-stats_render.py — Coleta de stats do PC e renderizacao da imagem 128x128.
+stats_render.py — Coleta de CPU, RAM e hora, e o desenho dos cartazes 128×128.
 
-Compartilhado entre demo_stats.py (CLI) e app.py (interface grafica).
-Layout otimizado para a telinha fisica: textos grandes e alto contraste.
-Para adicionar novas fontes de dados (cota de API, GitHub, Spotify...),
-estenda collect_stats() e o layout em render().
+O Screen Studio escolhe o cartaz em screen_frame.py. Cada cartaz é uma função daqui.
 """
 
 import re
@@ -31,7 +28,7 @@ CLAUDE = (219, 112, 76)
 BLURPLE = (88, 101, 242)
 # Verde do Spotify, brilhante o bastante para texto preto.
 SPOTIFY = (29, 185, 84)
-# Azul do cartaz das magias. Texto branco em cima.
+# Azul do cartaz do campeão. Texto branco em cima.
 LEAGUE = (47, 80, 180)
 
 
@@ -52,7 +49,7 @@ def _font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.I
 
 
 def collect_stats() -> dict:
-    """Adicione aqui suas fontes: cota de API/nuvem, GitHub, Spotify, etc."""
+    """CPU, RAM e hora do cartaz do relógio."""
     return {
         "cpu": psutil.cpu_percent(),
         "ram": psutil.virtual_memory().percent,
@@ -341,20 +338,218 @@ def render_spotify(track: dict) -> Image.Image:
     return img
 
 
+# Marca do League of Legends (simple-icons, CC0), viewBox 24.
+_LEAGUE_PATH = (
+    "m1.912 0 1.212 2.474v19.053L1.912 24h14.73l1.337-4.682H8.33V0Z"
+    "M12 1.516c-.913 0-1.798.112-2.648.312v1.74a9.738 9.738 0 0 1 2.648-.368"
+    "c5.267 0 9.536 4.184 9.536 9.348a9.203 9.203 0 0 1-2.3 6.086l-.273.954"
+    "-.602 2.112c2.952-1.993 4.89-5.335 4.89-9.122C23.25 6.468 18.213 1.516 12 1.516Z"
+    "m0 2.673c-.924 0-1.814.148-2.648.414v13.713h8.817a8.246 8.246 0 0 0 "
+    "2.36-5.768c0-4.617-3.818-8.359-8.529-8.359z"
+    "M2.104 7.312A10.858 10.858 0 0 0 .75 12.576c0 1.906.492 3.7 1.355 5.266z"
+)
+
+
+def _path_subpaths(path: str) -> list[list[tuple[float, float]]]:
+    """Achata o contorno (retas, curvas e arcos) em polígonos."""
+    import math
+
+    tokens = re.findall(r"[MmLlHhVvCcAaZz]|-?\d*\.?\d+(?:e[-+]?\d+)?", path)
+    subpaths: list[list[tuple[float, float]]] = []
+    current: list[tuple[float, float]] = []
+    index = 0
+    x = y = 0.0
+    start = (0.0, 0.0)
+    command = ""
+
+    def take(count: int) -> list[float]:
+        nonlocal index
+        values = [float(tokens[index + offset]) for offset in range(count)]
+        index += count
+        return values
+
+    def line_to(nx: float, ny: float) -> None:
+        nonlocal x, y
+        x, y = nx, ny
+        current.append((x, y))
+
+    def cubic(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float) -> None:
+        nonlocal x, y
+        x0, y0 = x, y
+        for step in range(1, 9):
+            t = step / 8
+            u = 1 - t
+            line_to(
+                u ** 3 * x0 + 3 * u ** 2 * t * x1 + 3 * u * t ** 2 * x2 + t ** 3 * x3,
+                u ** 3 * y0 + 3 * u ** 2 * t * y1 + 3 * u * t ** 2 * y2 + t ** 3 * y3,
+            )
+
+    def arc_to(rx: float, ry: float, phi: float, large: float, sweep: float,
+               x2: float, y2: float) -> None:
+        nonlocal x, y
+        x1, y1 = x, y
+        if math.hypot(x2 - x1, y2 - y1) < 1e-6 or rx == 0 or ry == 0:
+            line_to(x2, y2)
+            return
+        phi_r = math.radians(phi)
+        cos_p, sin_p = math.cos(phi_r), math.sin(phi_r)
+        rx, ry = abs(rx), abs(ry)
+        dx, dy = (x1 - x2) / 2, (y1 - y2) / 2
+        x1p = cos_p * dx + sin_p * dy
+        y1p = -sin_p * dx + cos_p * dy
+        lam = (x1p * x1p) / (rx * rx) + (y1p * y1p) / (ry * ry)
+        if lam > 1:
+            scale = math.sqrt(lam)
+            rx *= scale
+            ry *= scale
+        sign = -1 if bool(large) == bool(sweep) else 1
+        coef_sq = (
+            (rx * rx * ry * ry - rx * rx * y1p * y1p - ry * ry * x1p * x1p)
+            / (rx * rx * y1p * y1p + ry * ry * x1p * x1p)
+        )
+        coef = sign * math.sqrt(max(0.0, coef_sq))
+        cxp = coef * rx * y1p / ry
+        cyp = coef * -ry * x1p / rx
+        cx = cos_p * cxp - sin_p * cyp + (x1 + x2) / 2
+        cy = sin_p * cxp + cos_p * cyp + (y1 + y2) / 2
+
+        def angle(ux: float, uy: float, vx: float, vy: float) -> float:
+            dot = ux * vx + uy * vy
+            norm = math.hypot(ux, uy) * math.hypot(vx, vy)
+            raw = math.acos(max(-1.0, min(1.0, dot / norm))) if norm else 0.0
+            if ux * vy - uy * vx < 0:
+                raw = -raw
+            return raw
+
+        theta = angle(1, 0, (x1p - cxp) / rx, (y1p - cyp) / ry)
+        delta = angle(
+            (x1p - cxp) / rx, (y1p - cyp) / ry,
+            (-x1p - cxp) / rx, (-y1p - cyp) / ry,
+        )
+        if not sweep and delta > 0:
+            delta -= math.tau
+        elif sweep and delta < 0:
+            delta += math.tau
+        steps = max(8, int(abs(delta) / (math.pi / 10)))
+        for step in range(1, steps + 1):
+            t = theta + delta * step / steps
+            line_to(
+                cx + rx * math.cos(t) * cos_p - ry * math.sin(t) * sin_p,
+                cy + rx * math.cos(t) * sin_p + ry * math.sin(t) * cos_p,
+            )
+
+    while index < len(tokens):
+        token = tokens[index]
+        if token in "MmLlHhVvCcAaZz":
+            command = token
+            index += 1
+        if command in "Zz":
+            if current:
+                current.append(start)
+                subpaths.append(current)
+            current = []
+            x, y = start
+            command = ""
+            continue
+        if not command:
+            break
+        relative = command.islower()
+        if command in "Mm":
+            dx, dy = take(2)
+            x, y = (x + dx, y + dy) if relative else (dx, dy)
+            if current:
+                subpaths.append(current)
+            start = (x, y)
+            current = [start]
+            command = "l" if relative else "L"
+            continue
+        if command in "Ll":
+            dx, dy = take(2)
+            line_to(x + dx if relative else dx, y + dy if relative else dy)
+        elif command in "Hh":
+            dx = take(1)[0]
+            line_to(x + dx if relative else dx, y)
+        elif command in "Vv":
+            dy = take(1)[0]
+            line_to(x, y + dy if relative else dy)
+        elif command in "Cc":
+            x1, y1, x2, y2, x3, y3 = take(6)
+            if relative:
+                cubic(x + x1, y + y1, x + x2, y + y2, x + x3, y + y3)
+            else:
+                cubic(x1, y1, x2, y2, x3, y3)
+        elif command in "Aa":
+            rx, ry, phi, large, sweep, x2, y2 = take(7)
+            if relative:
+                x2 += x
+                y2 += y
+            arc_to(rx, ry, phi, large, sweep, x2, y2)
+        else:
+            break
+    if current:
+        subpaths.append(current)
+    return subpaths
+
+
+def _covers(poly: list[tuple[float, float]], px: float, py: float) -> int:
+    winding = 0
+    count = len(poly)
+    for i in range(count):
+        x1, y1 = poly[i]
+        x2, y2 = poly[(i + 1) % count]
+        if y1 <= py:
+            if y2 > py and (x2 - x1) * (py - y1) - (px - x1) * (y2 - y1) > 0:
+                winding += 1
+        elif y2 <= py and (x2 - x1) * (py - y1) - (px - x1) * (y2 - y1) < 0:
+            winding -= 1
+    return winding
+
+
+@lru_cache(maxsize=1)
+def _league_source() -> Image.Image:
+    """Marca em branco, desenhada uma vez e só reduzida depois."""
+    canvas = 96
+    subpaths = _path_subpaths(_LEAGUE_PATH)
+    mask = Image.new("L", (canvas, canvas), 0)
+    pixels = mask.load()
+    for row in range(canvas):
+        py = (row + 0.5) / canvas * 24
+        for col in range(canvas):
+            px = (col + 0.5) / canvas * 24
+            if sum(_covers(poly, px, py) for poly in subpaths):
+                pixels[col, row] = 255
+    white = Image.new("RGBA", (canvas, canvas), (255, 255, 255, 255))
+    painted = Image.new("RGBA", (canvas, canvas), (0, 0, 0, 0))
+    painted.paste(white, mask=mask)
+    return painted
+
+
+@lru_cache(maxsize=4)
+def _league_mark(size: int) -> Image.Image:
+    """Marca do League, em branco, para sentar no bloco azul."""
+    return _league_source().resize((size, size), Image.Resampling.LANCZOS)
+
+
 def render_league(match: dict) -> Image.Image:
-    """Nome do campeão em destaque. O nível fica no adesivo quando a partida manda."""
+    """Nome do campeão em destaque. A marca fica no cabeçalho, o nível no adesivo."""
     img = Image.new("RGB", (SCREEN_W, SCREEN_H), PAPER)
     draw = ImageDraw.Draw(img)
     name = (match.get("champion") or "").strip()
     level = match.get("level")
     if isinstance(level, int):
         _block(draw, (4, 4, 84, 26), LEAGUE, shadow=2)
-        draw.text((44, 15), t("league_name"), font=_display(13), fill=WHITE, anchor="mm")
         _block(draw, (90, 4, 122, 26), YELLOW, shadow=2)
         draw.text((106, 15), str(level), font=_display(14), fill=INK, anchor="mm")
     else:
         _block(draw, (4, 4, 120, 26), LEAGUE, shadow=2)
-        draw.text((62, 15), t("league_name"), font=_display(14), fill=WHITE, anchor="mm")
+    mark = _league_mark(14)
+    img.paste(mark, (8, 8), mark)
+    label = t("league_name")
+    draw.text(
+        (26, 15), label,
+        font=_display(_fit_text(draw, label, 13, 54)),
+        fill=WHITE, anchor="lm",
+    )
     _block(draw, (4, 34, 120, 120), YELLOW)
     lines = _wrap_lines(draw, name, 22, 104, 3)
     if not lines:

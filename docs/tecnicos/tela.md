@@ -82,11 +82,11 @@ Comando novo, fora de `0x40` / `0x41` / `0x42` e das páginas já documentadas, 
 
 `src/active_app.py` olha a janela da frente, não uma janela aberta atrás. O nome do executável entra em `config/screen.json`, em `programmingApps`. Aí `build_frame()` pode desenhar uma tela só para aquele app.
 
-O Discord (`src/discord_status.py`, lista `discordApps`) mostra online, conversa e microfone quando a janela dele está na frente. Numa chamada de voz, esse cartaz reveza com o que as outras regras escolheriam (Claude, Cursor, Spotify, o campeão ou o relógio), cerca de 10 segundos cada. Ao sair da conversa, fica quem está na frente.
+O Discord (`src/discord_status.py`, lista `discordApps`) mostra online, conversa e microfone quando a janela dele está na frente. Numa chamada de voz, esse cartaz reveza com o que as outras regras escolheriam (Claude, Cursor, Spotify ou o relógio), cerca de 10 segundos cada. O campeão não entra nessa troca: com o jogo na frente, a tela fica nele. Ao sair da conversa, fica quem está na frente.
 
 O Spotify (`src/spotify_now.py`, lista `spotifyApps`) mostra a faixa da sessão de mídia do Windows. Tocando, ele troca o relógio. Com a janela do Spotify na frente, mostra também pausa ou a ausência de faixa. Cursor, Claude e a partida do League na frente continuam na frente. Na chamada do Discord, o Spotify entra na vez dele quando teria trocado o relógio.
 
-O League (`src/lol_match.py`, lista `leagueApps`) mostra o campeão da partida quando a janela do jogo está na frente e a partida responde em `leagueLiveUrl`. O nome e o nível vêm da partida. A resposta não diz se uma skill está pronta, e o comando de luz do teclado ainda não foi capturado, então as teclas não mudam de cor.
+O League (`src/lol_match.py`, lista `leagueApps`) mostra o campeão da partida quando a janela do jogo está na frente e a partida responde em `leagueLiveUrl`. O nome e o nível vêm da partida. Com o jogo na frente, esse cartaz fica, mesmo durante uma chamada do Discord. A resposta não diz se uma skill está pronta, e o comando de luz do teclado ainda não foi capturado, então as teclas não mudam de cor.
 
 Números de conta (cota do Cursor, limite do Claude) vêm da sessão local da pessoa. Não grave token, cookie nem porcentagem fixa no código. Uma leitura fica em cache por 60 segundos. Se a sessão não puder ser lida, o cartaz ainda sai e o log da bandeja diz que a cota não foi lida.
 
@@ -151,3 +151,6 @@ No teclado, o Screen Studio sobe pela bandeja (`Screen Studio.bat`). A janela n�
 - 24/10/2026 — Cartaz das duas magias de invocador com a janela do League na frente. O nome sai da partida local. Sem recarga e sem comando de LED.
 - 24/10/2026 — O cartaz do League passou a mostrar o campeão da partida, com o nível no adesivo. As magias saíram da tela.
 - 24/10/2026 — Os campos de cota do Cursor e do Claude, e a leitura do Discord, saíram do README e ficaram neste guia.
+- 24/10/2026 — Saíram o monitor antigo do terminal, o teste que enchia a galeria, a logo solta e os previews que o README não usa mais.
+- 24/10/2026 — Com o jogo na frente, o cartaz do campeão deixa de revezar com a chamada do Discord.
+- 24/10/2026 — O cartaz do campeão ganhou a marca do League no cabeçalho, no mesmo lugar da marca do Cursor e da do Claude.
