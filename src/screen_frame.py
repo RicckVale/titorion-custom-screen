@@ -63,6 +63,17 @@ def _turn(frames: list[tuple]) -> tuple:
     return frames[slot]
 
 
+def _league_now(cfg: dict, lang: str) -> tuple | None:
+    """Campeão quando a partida está na frente. None fora do jogo ou sem resposta."""
+    league_apps = cfg.get("leagueApps") or []
+    if not league_apps or not foreground_matches(league_apps):
+        return None
+    match = league_champion(cfg.get("leagueLiveUrl") or "")
+    if not match:
+        return None
+    return _league_frame(match, lang)
+
+
 def _other_frame(cfg: dict, lang: str) -> tuple:
     """Cartaz de quem está na frente, do Spotify tocando, ou do relógio."""
     app = programming_app(cfg["programmingApps"])
@@ -93,11 +104,9 @@ def _other_frame(cfg: dict, lang: str) -> tuple:
         else:
             text = t("log_cursor_miss", label=label)
         return img, text, f"limite:{app}:{lang}"
-    league_apps = cfg.get("leagueApps") or []
-    if league_apps and foreground_matches(league_apps):
-        match = league_champion(cfg.get("leagueLiveUrl") or "")
-        if match:
-            return _league_frame(match, lang)
+    league = _league_now(cfg, lang)
+    if league is not None:
+        return league
     spotify_apps = cfg.get("spotifyApps") or []
     if spotify_apps:
         track = spotify_now(spotify_apps)
@@ -120,6 +129,10 @@ def build_frame() -> tuple:
     """
     cfg = load_screen_config()
     lang = current()
+    # Partida na frente fica no campeão. A chamada do Discord não cobre o jogo.
+    league = _league_now(cfg, lang)
+    if league is not None:
+        return league
     discord_apps = cfg.get("discordApps") or []
     discord_frame = None
     in_call = False
