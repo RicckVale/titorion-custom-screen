@@ -4,3 +4,4 @@ __pycache__/
 config/screen_state.json
 preview_teste.png
 *.log
+.cursor/
