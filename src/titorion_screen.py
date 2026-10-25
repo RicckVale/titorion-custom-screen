@@ -54,6 +54,10 @@ SCREEN_SUB_HOME_PAGE = 0x0B      # payload: A5 5A 0B 00 00 CRC_HI CRC_LO
 SCREEN_SUB_PICTURE_PAGE = 0x0D   # payload: A5 5A 0D 00 00 CRC_HI CRC_LO
 SCREEN_SUB_DELETE_PICTURE = 0x0E # payload: A5 5A 0E 00 00 CRC_HI CRC_LO (apaga uma imagem)
 SCREEN_SUB_GIF_PAGE = 0x0F       # payload: A5 5A 0F 00 00 CRC_HI CRC_LO
+# Quantas imagens apagar num reset. O estado estável guarda duas; o extra
+# cobre um envio cortado. 0x0E além disso não tem resposta documentada:
+# o primeiro timeout encerra a limpeza.
+_CLEAR_TRIES = 6
 
 
 class ScreenBusyError(TimeoutError):
@@ -290,6 +294,37 @@ class TitorionScreen:
                 self.switch_to_picture_page()
             _write_state({"loadingReady": True, "contentReady": True})
 
+    def reset_gallery(self, image) -> None:
+        """Esvazia as imagens guardadas e grava de novo a que deve aparecer.
+
+        Só usa comando já conferido: picture page 0x0D e apagar uma 0x0E, depois
+        o upload normal. O relógio roxo pode aparecer no meio. O timeout curto
+        de antes desistia do apagamento e a imagem velha continuava na tela.
+        """
+        with self._lock:
+            self._loading_ready = False
+            self._seeded_now = False
+            _write_state({})
+            self.switch_to_picture_page()
+            saved_timeout = self.timeout_s
+            saved_retries = self.retries
+            self.timeout_s = 2.0
+            self.retries = 2
+            try:
+                for _ in range(_CLEAR_TRIES):
+                    try:
+                        self.delete_picture()
+                    except (TimeoutError, OSError, ScreenBusyError):
+                        break
+            finally:
+                self.timeout_s = saved_timeout
+                self.retries = saved_retries
+            self.upload_pixels(_loading_frame())
+            self.upload_pixels(image_to_rgb565be(image))
+            self.switch_to_picture_page()
+            self._loading_ready = True
+            _write_state({"loadingReady": True, "contentReady": True})
+
     def _ensure_loading_base(self) -> None:
         """Garante o poster como primeira imagem, sem esvaziar a tela.
 
@@ -321,6 +356,16 @@ def _read_state() -> dict:
     except (OSError, json.JSONDecodeError):
         return {}
     return data if isinstance(data, dict) else {}
+
+
+def gallery_reset_pending() -> bool:
+    return bool(_read_state().get("recover"))
+
+
+def request_gallery_reset() -> None:
+    data = _read_state()
+    data["recover"] = True
+    _write_state(data)
 
 
 def _write_state(data: dict) -> None:

@@ -155,6 +155,7 @@ sobe a imagem nova, troca para ela e só então apaga a anterior.
 - Duas imagens na memória. A nova entra como terceira, a tela troca para ela, e o `0x0E` tira a que ficou para trás.
 - Nunca intercalar uploads (trava por software já implementada na biblioteca).
 - Nunca fechar o processo no meio de um upload (app já espera o frame terminar).
+- Reset da memória, quando a imagem visível para de mudar: picture page `0x0D`, `0x0E` uma vez por imagem (para no timeout), depois o upload normal e `0x0D` de novo. O relógio pode aparecer no meio.
 - [ ] GIF animado: componente `$Ut` do driver (tem `gifMaxLength` por modelo; Saiph não tem → provável que GIF seja por frames enviados em sequência ou não suportado)
 - [x] Voltar a tela ao relógio sem reboot: homepage `0x0B` (driver, componente `CUt`)
 - [ ] Remapeamento de teclas por software (`0x18` setkeyMessage) para o recurso "tecla muda conforme o app aberto"

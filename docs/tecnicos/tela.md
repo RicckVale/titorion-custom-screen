@@ -76,6 +76,8 @@ Duas coisas derrubam a tela no relógio roxo (homepage `0x0B`):
 
 Não chame `delete_picture()` nem `switch_to_home_page()` no meio de uma troca. Não feche o processo no meio de um `send_image()`: o envio cortado trava o controlador até reconectar o teclado.
 
+Se o teclado foi reiniciado e a imagem visível parou de mudar, a memória ficou com cartaz velho e o arquivo `config/screen_state.json` não sabe disso. **Esvaziar tela**, na janela ou na bandeja, pede a picture page (`0x0D`), apaga uma imagem por vez (`0x0E`, no máximo seis, e para no primeiro timeout) e grava de novo o cartaz de carregamento e o cartaz atual. O relógio roxo pode aparecer nesse intervalo. Não é comando novo.
+
 Comando novo, fora de `0x40` / `0x41` / `0x42` e das páginas já documentadas, só depois de capturar o tráfego real.
 
 ## App em foco
@@ -155,3 +157,4 @@ No teclado, o Screen Studio sobe pela bandeja (`Screen Studio.bat`). A janela n�
 - 24/10/2026 — Com o jogo na frente, o cartaz do campeão deixa de revezar com a chamada do Discord.
 - 24/10/2026 — O cartaz do campeão ganhou a marca do League no cabeçalho, no mesmo lugar da marca do Cursor e da do Claude.
 - 24/10/2026 — O cartaz do campeão entra com a partida aberta, mesmo sem a janela do jogo na frente. Um erro de envio não para o monitor.
+- 24/10/2026 — Esvaziar tela apaga as imagens guardadas com `0x0E` e grava o cartaz atual de novo, para quando um reinício deixa a imagem velha presa.

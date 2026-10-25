@@ -27,7 +27,9 @@ from PIL import Image, ImageTk
 from brand_mark import icon as app_mark
 from i18n import current, set_language, t
 from screen_frame import build_frame
-from titorion_screen import TitorionScreen, SCREEN_W, SCREEN_H
+from titorion_screen import (
+    TitorionScreen, SCREEN_W, SCREEN_H, gallery_reset_pending,
+)
 
 SCALE = 2
 PREVIEW = SCREEN_W * SCALE   # 256
@@ -88,6 +90,7 @@ class App(tk.Tk):
         self._status_key = "disconnected"
         self._status_ok = False
         self._force_frame = False
+        self._resetting = False
 
         self._build_ui()
         self._apply_window_icon()
@@ -122,6 +125,7 @@ class App(tk.Tk):
     def _tray_menu(self) -> pystray.Menu:
         return pystray.Menu(
             pystray.MenuItem(t("tray_open"), self._show_from_tray, default=True),
+            pystray.MenuItem(t("tray_reset"), self._reset_from_tray),
             pystray.MenuItem(t("tray_quit"), self._quit_from_tray),
         )
 
@@ -130,6 +134,9 @@ class App(tk.Tk):
 
     def _quit_from_tray(self, _icon: pystray.Icon, _item: pystray.MenuItem) -> None:
         self.after(0, self._quit)
+
+    def _reset_from_tray(self, _icon: pystray.Icon, _item: pystray.MenuItem) -> None:
+        self.after(0, self.reset_screen)
 
     def _show(self) -> None:
         self.deiconify()
@@ -204,7 +211,9 @@ class App(tk.Tk):
                    relief="flat", insertbackground=FG,
                    font=("Segoe UI", 8)).pack(side="right")
         self.btn_monitor = _flat_button(mon_card, "", self.toggle_monitor)
-        self.btn_monitor.pack(padx=8, pady=(0, 8), fill="x")
+        self.btn_monitor.pack(padx=8, pady=(0, 4), fill="x")
+        self.btn_reset = _flat_button(mon_card, "", self.reset_screen, primary=False)
+        self.btn_reset.pack(padx=8, pady=(0, 8), fill="x")
 
         img_card = _card(right, "")
         self.img_card = img_card
@@ -240,6 +249,7 @@ class App(tk.Tk):
         self.btn_pick.configure(text=t("choose_image"))
         self.btn_send_img.configure(text=t("send_image"))
         self.btn_red.configure(text=t("red_test"))
+        self.btn_reset.configure(text=t("reset_screen"))
         suffix = t("zoom_real") if self.zoom == 1 else ""
         self.btn_zoom.configure(text=t("zoom", n=self.zoom, suffix=suffix))
         if not self.monitor_on:
@@ -328,12 +338,57 @@ class App(tk.Tk):
             self.screen.connect()
             self.set_status(True, "connected")
             self.log(t("keyboard_connected"))
-            # Um frame. send_image sobe a nova, mostra, e apaga a anterior.
-            self.after(400, self._autostart_monitor)
+            self.after(400, self._boot_screen)
         except Exception as e:
             self.screen = None
             self.set_status(False, "not_found")
             self.log(f"❌ {e}")
+
+    def _boot_screen(self) -> None:
+        """Se a memória da tela ficou para trás, esvazia antes de acompanhar."""
+        if gallery_reset_pending():
+            self.reset_screen(restart_monitor=True)
+            return
+        self._autostart_monitor()
+
+    def reset_screen(self, restart_monitor: bool = False) -> None:
+        """Apaga as imagens guardadas e grava o cartaz atual de novo."""
+        if self._resetting:
+            return
+        if not self.screen:
+            self.log(t("connect_first"))
+            return
+        if self.monitor_thread and self.monitor_thread.is_alive():
+            self.monitor_on = False
+            self.monitor_thread.join(timeout=20)
+            if self.monitor_thread.is_alive():
+                self.log(t("reset_busy"))
+                return
+        self._resetting = True
+        self.btn_reset.configure(state="disabled")
+        self.log(t("resetting"))
+        threading.Thread(
+            target=self._reset_worker, args=(restart_monitor,), daemon=True,
+        ).start()
+
+    def _reset_worker(self, restart_monitor: bool) -> None:
+        try:
+            img, _text, _mode = build_frame()
+            assert self.screen is not None
+            self.screen.reset_gallery(img)
+        except Exception as e:
+            self._resetting = False
+            self.after(0, self.btn_reset.configure, {"state": "normal"})
+            self.after(0, self.log, t("reset_fail", error=e))
+            self.after(0, self.set_status, False, "reconnect_status")
+            return
+        self._resetting = False
+        self._force_frame = True
+        self.after(0, self.btn_reset.configure, {"state": "normal"})
+        self.after(0, self.show_preview, img)
+        self.after(0, self.log, t("reset_done"))
+        if restart_monitor:
+            self.after(0, self._autostart_monitor)
 
     def _autostart_monitor(self) -> None:
         """Acompanha o app em foco: limite no Cursor/Claude, stats no resto."""
