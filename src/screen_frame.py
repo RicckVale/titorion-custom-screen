@@ -48,7 +48,8 @@ def _spotify_frame(track: dict, lang: str) -> tuple:
         mode_state = "empty"
     title = track.get("title") or state
     text = t("log_spotify", state=state, title=title)
-    return img, text, f"spotify:{mode_state}:{lang}:{title}"
+    art = "art" if track.get("cover") else "plain"
+    return img, text, f"spotify:{mode_state}:{art}:{lang}:{title}"
 
 
 def _league_frame(match: dict, lang: str) -> tuple:
@@ -79,15 +80,19 @@ def _weather_frame(cfg: dict, lang: str) -> tuple | None:
     return img, text, f"weather:{lang}:{report['tone']}:{report['temp_c']}"
 
 
-def _clock_frame(cfg: dict, lang: str) -> tuple:
+def _pace(cfg: dict) -> float:
+    return turn_seconds(cfg.get("weatherTurnSeconds"))
+
+
+def _idle_frames(cfg: dict, lang: str) -> list[tuple]:
     stats = collect_stats()
     img = render(stats)
     text = f"cpu {stats['cpu']:.0f}% | ram {stats['ram']:.0f}% | {stats['time']}"
+    frames = [(img, text, f"stats:{lang}")]
     weather = _weather_frame(cfg, lang)
-    clock = (img, text, f"stats:{lang}")
-    if weather is None:
-        return clock
-    return _turn([clock, weather], turn_seconds(cfg.get("weatherTurnSeconds")))
+    if weather is not None:
+        frames.append(weather)
+    return frames
 
 
 def _league_now(cfg: dict, lang: str) -> tuple | None:
@@ -108,9 +113,7 @@ def _league_now(cfg: dict, lang: str) -> tuple | None:
     return _league_frame(match, lang)
 
 
-def _other_frame(cfg: dict, lang: str) -> tuple:
-    """Cartaz de quem está na frente, do Spotify tocando, ou do relógio."""
-    app = programming_app(cfg["programmingApps"])
+def _quota_frame(cfg: dict, lang: str, app: str) -> tuple:
     if app == "Claude":
         quota = fetch_claude_usage()
         img = render_usage(quota, app)
@@ -123,49 +126,59 @@ def _other_frame(cfg: dict, lang: str) -> tuple:
         else:
             text = t("log_claude_miss")
         return img, text, f"limite:Claude:{lang}"
-    if app:
-        quota = fetch_period_usage()
-        label = app
-        img = render_usage(quota, label)
-        if quota.get("ok"):
-            text = t(
-                "log_cursor",
-                label=label,
-                included=f"{quota['included_pct']:.0f}",
-                api=f"{quota['api_pct']:.0f}",
-                auto=f"{quota['auto_pct']:.0f}",
-            )
-        else:
-            text = t("log_cursor_miss", label=label)
-        return img, text, f"limite:{app}:{lang}"
-    league = _league_now(cfg, lang)
-    if league is not None:
-        return league
-    spotify_apps = cfg.get("spotifyApps") or []
-    if spotify_apps:
-        track = spotify_now(spotify_apps)
-        # Tocando, o cartaz troca o relógio. Cursor e Claude ficam na frente.
-        if track["playing"] or foreground_matches(spotify_apps):
-            return _spotify_frame(track, lang)
-    return _clock_frame(cfg, lang)
+    quota = fetch_period_usage()
+    img = render_usage(quota, app)
+    if quota.get("ok"):
+        text = t(
+            "log_cursor",
+            label=app,
+            included=f"{quota['included_pct']:.0f}",
+            api=f"{quota['api_pct']:.0f}",
+            auto=f"{quota['auto_pct']:.0f}",
+        )
+    else:
+        text = t("log_cursor_miss", label=app)
+    return img, text, f"limite:{app}:{lang}"
+
+
+def _with_playing(frames: list[tuple], cfg: dict, lang: str, track: dict) -> tuple:
+    """Com faixa tocando, o cartaz do Spotify entra na mesma troca."""
+    if track.get("playing"):
+        frames = [*frames, _spotify_frame(track, lang)]
+    if len(frames) == 1:
+        return frames[0]
+    return _turn(frames, _pace(cfg))
 
 
 def build_frame() -> tuple:
     """Retorna (imagem, texto de log, modo). O idioma entra no modo para reenviar na hora.
 
     Fora da chamada, o cartaz do Discord só aparece com a janela dele na frente.
-    Numa chamada, ele reveza com o cartaz que as outras regras escolheriam.
+    Numa chamada, ele reveza com o relógio e o tempo.
+    Com uma faixa tocando, o Spotify entra nessa mesma troca.
+    A partida aberta fica no campeão.
     """
     cfg = load_screen_config()
     lang = current()
-    # Cursor e Claude na frente continuam na frente. No resto, a partida aberta fica.
-    if programming_app(cfg["programmingApps"]):
-        return _other_frame(cfg, lang)
+    spotify_apps = cfg.get("spotifyApps") or []
+    track = spotify_now(spotify_apps) if spotify_apps else {
+        "playing": False,
+        "paused": False,
+        "title": "",
+        "artist": "",
+    }
+    spotify_focused = bool(spotify_apps and foreground_matches(spotify_apps))
+    app = programming_app(cfg["programmingApps"])
+    if app:
+        return _with_playing([_quota_frame(cfg, lang, app)], cfg, lang, track)
     league = _league_now(cfg, lang)
     if league is not None:
         return league
+    if spotify_focused:
+        return _spotify_frame(track, lang)
     discord_apps = cfg.get("discordApps") or []
     discord_frame = None
+    focused = False
     in_call = False
     if discord_apps:
         snap = discord_snapshot(discord_apps)
@@ -173,9 +186,11 @@ def build_frame() -> tuple:
         in_call = bool(snap["open"] and snap["in_call"])
         if focused or in_call:
             discord_frame = _discord_frame(snap, lang)
-        if focused and not in_call:
-            return discord_frame
-    other = _other_frame(cfg, lang)
-    if in_call and discord_frame is not None:
-        return _turn([discord_frame, other])
-    return other
+    idle = _idle_frames(cfg, lang)
+    if discord_frame is not None and focused and not in_call:
+        frames = [discord_frame]
+    elif discord_frame is not None and in_call:
+        frames = [discord_frame, *idle]
+    else:
+        frames = idle
+    return _with_playing(frames, cfg, lang, track)

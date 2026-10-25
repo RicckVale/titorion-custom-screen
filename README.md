@@ -25,9 +25,9 @@ A tela de fábrica, e a mesma foto com o cartaz do Claude nesse lugar:
 | Cursor | Cota da conta: Auto, API e o incluído. Verde até 50%, amarelo até 75%, vermelho acima. |
 | Claude | A semana de todos os modelos, a sessão, e o tempo até reiniciar. |
 | Discord | Online, em chamada ou livre, e o microfone. Numa chamada, reveza com o outro cartaz, cerca de 10 segundos cada. |
-| Spotify | Faixa, artista e a capa, tocando ou em pausa. Tocando, entra no lugar do relógio. |
+| Spotify | Faixa, artista e a capa. Na frente, mostra também a pausa. Tocando, reveza com o cartaz da vez, no mesmo intervalo do tempo. O campeão da partida não sai. |
 | League | O campeão da partida, com o nível. |
-| Qualquer outra | Relógio, CPU e RAM, revezando com o tempo. O intervalo é `weatherTurnSeconds` em `config/screen.json`, no mínimo 10 segundos. |
+| Qualquer outra | Relógio, CPU e RAM, revezando com o tempo. O intervalo é `weatherTurnSeconds` em `config/screen.json`, no mínimo 10 segundos. Uma faixa tocando entra nessa troca. |
 
 Os números saem da sessão já aberta neste computador. Não há cota fixa no código, e nenhum token fica neste repositório. **PT** e **EN**, na janela do programa, trocam o texto dos cartazes. De onde vem cada número: [`docs/tecnicos/tela.md`](docs/tecnicos/tela.md).
 

@@ -84,9 +84,9 @@ Comando novo, fora de `0x40` / `0x41` / `0x42` e das páginas já documentadas, 
 
 `src/active_app.py` olha a janela da frente, não uma janela aberta atrás. O nome do executável entra em `config/screen.json`, em `programmingApps`. Aí `build_frame()` pode desenhar uma tela só para aquele app.
 
-O Discord (`src/discord_status.py`, lista `discordApps`) mostra online, conversa e microfone quando a janela dele está na frente. Numa chamada de voz, esse cartaz reveza com o que as outras regras escolheriam (Claude, Cursor, Spotify ou o relógio), cerca de 10 segundos cada. O campeão não entra nessa troca: com o jogo na frente, a tela fica nele. Ao sair da conversa, fica quem está na frente.
+O Discord (`src/discord_status.py`, lista `discordApps`) mostra online, conversa e microfone quando a janela dele está na frente. Numa chamada de voz, esse cartaz reveza com o relógio e o tempo, no intervalo `weatherTurnSeconds` (no mínimo 10 segundos). O campeão não entra nessa troca: com a partida aberta, a tela fica nele. Ao sair da conversa, fica quem está na frente.
 
-O Spotify (`src/spotify_now.py`, lista `spotifyApps`) mostra a faixa da sessão de mídia do Windows, com a capa quando ela vem junto. Tocando, ele troca o relógio. Com a janela do Spotify na frente, mostra também pausa ou a ausência de faixa. Se essa leitura não responder, a tela segue para o relógio em vez de ficar no cartaz anterior. Cursor, Claude e a partida do League na frente continuam na frente. Na chamada do Discord, o Spotify entra na vez dele quando teria trocado o relógio.
+O Spotify (`src/spotify_now.py`, lista `spotifyApps`) mostra a faixa, o artista e a capa. O nome sai da janela do programa, no formato artista e faixa. Tocando significa que o processo está emitindo som. A capa sai do catálogo público da faixa, primeiro o iTunes e, se a música não estiver lá, o Deezer. Sem token. A sessão de mídia do Windows ainda entrega a capa quando responde, e uma leitura que não responde não segura a tela. Com a janela do Spotify na frente, o cartaz fica, inclusive em pausa ou sem faixa. Com uma faixa tocando e outra janela na frente, o cartaz entra na troca com a cota, o Discord, o relógio ou o tempo, no mesmo intervalo. A partida do League continua no campeão.
 
 Fora desses cartazes, o relógio reveza com o tempo. O intervalo está em `weatherTurnSeconds`.
 
@@ -129,7 +129,7 @@ Uma organização que só tem acesso de API, e não a sessão do chat, não devo
 
 Online no Discord significa uma conexão TCP ativa. Em chamada significa que o log de voz do próprio aplicativo terminou em conectado. O microfone é a sessão de captura do Windows desse processo, e só aparece durante a chamada.
 
-O Spotify lê a sessão de mídia do Windows. Sem conta e sem token. A capa vem dessa mesma sessão, quando o player manda. O nome da faixa cresce quando é curto e encolhe quando é longo, até caber inteiro no bloco.
+O Spotify lê o nome na janela do programa e o som na sessão de áudio do Windows. Sem conta e sem token. A capa vem do catálogo público da faixa. A sessão de mídia do Windows substitui essa imagem quando responde. O nome da faixa cresce quando é curto e encolhe quando é longo, até caber inteiro no bloco. Tocando, o cartaz reveza com o que estiver na vez. A partida aberta não entra nessa troca.
 
 O tempo (`src/weather.py`) reveza com o relógio. O intervalo é `weatherTurnSeconds` em `config/screen.json`, no mínimo 10 segundos. A cidade é `weatherCity`. Vazia, o lugar sai da rede, uma vez, e a previsão sai do Open-Meteo, sem token. A leitura fica em cache por 10 minutos.
 
@@ -169,3 +169,5 @@ No teclado, o Screen Studio sobe pela bandeja (`Screen Studio.bat`). A janela n�
 - 25/10/2026 — O tempo reveza com o relógio. A capa da faixa entra no cartaz do Spotify quando a sessão de mídia manda a imagem.
 - 25/10/2026 — O nome da faixa no Spotify encolhe para caber inteiro e cresce quando o título é curto.
 - 25/10/2026 — O cartaz do tempo ganhou ícone em pixel da condição: sol, nuvem, chuva, neve e tempestade.
+- 25/10/2026 — Com uma faixa tocando, o Spotify entra na troca do cartaz da vez. O nome sai da janela e o tocando sai do áudio, porque a sessão de mídia pode não responder.
+- 25/10/2026 — A capa da faixa volta ao cartaz pelo catálogo público da música, quando a sessão de mídia não manda a imagem.
