@@ -306,7 +306,13 @@ def render_spotify(track: dict) -> Image.Image:
     has_track = bool(title)
 
     _block(draw, (4, 4, 120, 26), SPOTIFY, shadow=2)
-    draw.text((62, 15), t("spotify_name"), font=_display(14), fill=INK, anchor="mm")
+    logo = _brand_mark(_SPOTIFY_PATH, 14, INK)
+    img.paste(logo, (8, 8), logo)
+    draw.text(
+        (26, 15), t("spotify_name"),
+        font=_display(_fit_text(draw, t("spotify_name"), 14, 88)),
+        fill=INK, anchor="lm",
+    )
 
     if not has_track:
         _block(draw, (4, 34, 120, 120), YELLOW)
@@ -354,13 +360,17 @@ def _path_subpaths(path: str) -> list[list[tuple[float, float]]]:
     """Achata o contorno (retas, curvas e arcos) em polígonos."""
     import math
 
-    tokens = re.findall(r"[MmLlHhVvCcAaZz]|-?\d*\.?\d+(?:e[-+]?\d+)?", path)
+    # Duas bandeiras de arco coladas num decimal: "00.0312" é 0, 0, .0312.
+    path = re.sub(r"00(?=\.)", "0 0 ", path)
+    path = re.sub(r"00(?=-)", "0 0 ", path)
+    tokens = re.findall(r"[MmLlHhVvCcSsAaZz]|-?\d*\.?\d+(?:e[-+]?\d+)?", path)
     subpaths: list[list[tuple[float, float]]] = []
     current: list[tuple[float, float]] = []
     index = 0
     x = y = 0.0
     start = (0.0, 0.0)
     command = ""
+    last_ctrl: tuple[float, float] | None = None
 
     def take(count: int) -> list[float]:
         nonlocal index
@@ -368,13 +378,30 @@ def _path_subpaths(path: str) -> list[list[tuple[float, float]]]:
         index += count
         return values
 
+    def _take_flag() -> float:
+        """Bandeira de arco é um único 0 ou 1, mesmo colada no número seguinte."""
+        nonlocal index
+        token = tokens[index]
+        glued = (
+            len(token) >= 2
+            and token[0] in "01"
+            and (token[1] in "01" or not token[1].isdigit())
+        )
+        if glued:
+            tokens[index] = token[0]
+            tokens.insert(index + 1, token[1:])
+            token = token[0]
+        index += 1
+        return float(token)
+
     def line_to(nx: float, ny: float) -> None:
         nonlocal x, y
         x, y = nx, ny
         current.append((x, y))
 
     def cubic(x1: float, y1: float, x2: float, y2: float, x3: float, y3: float) -> None:
-        nonlocal x, y
+        nonlocal x, y, last_ctrl
+        last_ctrl = (x2, y2)
         x0, y0 = x, y
         for step in range(1, 9):
             t = step / 8
@@ -440,9 +467,11 @@ def _path_subpaths(path: str) -> list[list[tuple[float, float]]]:
 
     while index < len(tokens):
         token = tokens[index]
-        if token in "MmLlHhVvCcAaZz":
+        if token in "MmLlHhVvCcSsAaZz":
             command = token
             index += 1
+            if command not in "CcSs":
+                last_ctrl = None
         if command in "Zz":
             if current:
                 current.append(start)
@@ -478,8 +507,20 @@ def _path_subpaths(path: str) -> list[list[tuple[float, float]]]:
                 cubic(x + x1, y + y1, x + x2, y + y2, x + x3, y + y3)
             else:
                 cubic(x1, y1, x2, y2, x3, y3)
+        elif command in "Ss":
+            x2, y2, x3, y3 = take(4)
+            if relative:
+                x2, y2, x3, y3 = x + x2, y + y2, x + x3, y + y3
+            if last_ctrl is None:
+                x1, y1 = x, y
+            else:
+                x1, y1 = 2 * x - last_ctrl[0], 2 * y - last_ctrl[1]
+            cubic(x1, y1, x2, y2, x3, y3)
         elif command in "Aa":
-            rx, ry, phi, large, sweep, x2, y2 = take(7)
+            rx, ry, phi = take(3)
+            large = _take_flag()
+            sweep = _take_flag()
+            x2, y2 = take(2)
             if relative:
                 x2 += x
                 y2 += y
@@ -505,11 +546,16 @@ def _covers(poly: list[tuple[float, float]], px: float, py: float) -> int:
     return winding
 
 
-@lru_cache(maxsize=1)
-def _league_source() -> Image.Image:
-    """Marca em branco, desenhada uma vez e só reduzida depois."""
+# Marcas do Discord e do Spotify (simple-icons, CC0), viewBox 24.
+_DISCORD_PATH = 'M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z'
+_SPOTIFY_PATH = 'M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z'
+
+
+@lru_cache(maxsize=8)
+def _mark_source(path: str) -> Image.Image:
+    """Marca branca em 96 px, desenhada uma vez e só reduzida depois."""
     canvas = 96
-    subpaths = _path_subpaths(_LEAGUE_PATH)
+    subpaths = _path_subpaths(path)
     mask = Image.new("L", (canvas, canvas), 0)
     pixels = mask.load()
     for row in range(canvas):
@@ -524,10 +570,18 @@ def _league_source() -> Image.Image:
     return painted
 
 
-@lru_cache(maxsize=4)
+def _brand_mark(path: str, size: int, color: tuple[int, int, int]) -> Image.Image:
+    """Reduz a marca e pinta na cor do cabeçalho."""
+    source = _mark_source(path).resize((size, size), Image.Resampling.LANCZOS)
+    tint = Image.new("RGBA", source.size, (*color, 255))
+    painted = Image.new("RGBA", source.size, (0, 0, 0, 0))
+    painted.paste(tint, mask=source.getchannel("A"))
+    return painted
+
+
 def _league_mark(size: int) -> Image.Image:
     """Marca do League, em branco, para sentar no bloco azul."""
-    return _league_source().resize((size, size), Image.Resampling.LANCZOS)
+    return _brand_mark(_LEAGUE_PATH, size, WHITE)
 
 
 def render_league(match: dict) -> Image.Image:
@@ -569,7 +623,13 @@ def render_discord(state: dict) -> Image.Image:
     mic = state.get("mic_open")
 
     _block(draw, (4, 4, 84, 26), BLURPLE, shadow=2)
-    draw.text((10, 15), t("discord_name"), font=_display(13), fill=WHITE, anchor="lm")
+    logo = _brand_mark(_DISCORD_PATH, 14, WHITE)
+    img.paste(logo, (8, 8), logo)
+    draw.text(
+        (26, 15), t("discord_name"),
+        font=_display(_fit_text(draw, t("discord_name"), 12, 54)),
+        fill=WHITE, anchor="lm",
+    )
     _block(draw, (90, 4, 122, 26), GREEN if online else RED, shadow=2)
     mark = t("discord_on") if online else t("discord_off")
     draw.text((106, 15), mark, font=_display(13), fill=INK, anchor="mm")

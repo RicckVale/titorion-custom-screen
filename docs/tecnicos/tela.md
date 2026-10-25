@@ -158,3 +158,4 @@ No teclado, o Screen Studio sobe pela bandeja (`Screen Studio.bat`). A janela n�
 - 24/10/2026 — O cartaz do campeão ganhou a marca do League no cabeçalho, no mesmo lugar da marca do Cursor e da do Claude.
 - 24/10/2026 — O cartaz do campeão entra com a partida aberta, mesmo sem a janela do jogo na frente. Um erro de envio não para o monitor.
 - 24/10/2026 — Esvaziar tela apaga as imagens guardadas com `0x0E` e grava o cartaz atual de novo, para quando um reinício deixa a imagem velha presa.
+- 24/10/2026 — Os cartazes do Discord e do Spotify ganharam a marca no cabeçalho, no mesmo lugar da marca do League.
