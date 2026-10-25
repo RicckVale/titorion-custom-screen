@@ -27,13 +27,18 @@ Screen Studio sits in the Windows tray, with the project logo, and follows the f
 | Claude        | Claude limit: the week (all models) in front, the session below, time until reset on the sticker. Header in the app's orange, with the star. |
 | Discord       | Online, in a voice conversation or not, and the mic (open, muted, or not in a call). Header in blurple.                                      |
 | Spotify       | The track that is playing: title, artist, and whether it is playing or paused. Header in Spotify green.                                     |
+| League        | The champion in the open match, with the level on the sticker. Header in blue.                                                               |
 | Anything else | Clock, CPU, and RAM, on the same kind of card.                                                                                               |
 
-The same three cards, at the size the keyboard draws them:
+The cards, at the size the keyboard draws them:
 
-| Cursor | Claude | Anything else |
+| Cursor | Claude | Clock, CPU and RAM |
 |---|---|---|
 | ![Cursor quota](assets/preview-cursor.png) | ![Claude quota](assets/preview-claude.png) | ![Clock, CPU and RAM](assets/preview-stats.png) |
+
+| Discord, not in a call | Spotify, playing | League, in a match |
+|---|---|---|
+| ![Discord idle](assets/preview-discord.png) | ![Spotify playing](assets/preview-spotify.png) | ![Champion](assets/preview-champion.png) |
 
 The numbers come from the session already open on the computer. No fixed quota in the code, and no token is stored in this repository. A reading is cached for 60 seconds. If the session cannot be read, the card still goes out and the tray log says the quota was not read.
 
@@ -47,7 +52,7 @@ With the Discord window in front, the keyboard shows that card: **ON** or **OFF*
 |---|---|---|
 | ![Discord idle](assets/preview-discord.png) | ![Discord call, mic open](assets/preview-discord-call.png) | ![Discord call, mic muted](assets/preview-discord-muted.png) |
 
-A voice conversation takes the screen over the clock and over Cursor or Claude. Leave the call and the keyboard goes back to whatever is in front.
+During a voice call the keyboard alternates this card with the one that would otherwise be showing (Claude, Cursor, Spotify, the champion card, or the clock), about every 10 seconds. Leave the call and the keyboard stays on whatever is in front. Discord in front, and not in a call, still shows only this card.
 
 Online means Discord has a live TCP connection. In a call means the app's own voice log last ended in connected. The mic is the Windows capture session of that process, and it is only shown during the call: open, muted, or no capture session. Nothing from the account is written into this repository.
 
@@ -59,7 +64,11 @@ The card reads the Windows media session for the apps in `spotifyApps`. No Spoti
 |---|---|---|
 | ![Spotify playing](assets/preview-spotify.png) | ![Spotify paused](assets/preview-spotify-paused.png) | ![Spotify empty](assets/preview-spotify-empty.png) |
 
-While a track is **playing**, this card replaces the clock. Cursor, Claude, and a Discord voice call stay in front of it. If Spotify is the front window, the card also shows a paused track, or **SEM MUSICA** / **NOTHING** when there is no track. The title wraps to two lines. A longer name is cut with `..`.
+While a track is **playing**, this card replaces the clock. Cursor, Claude, and a League match in front stay ahead of it. During a Discord call, this card still takes a turn when it would have replaced the clock. If Spotify is the front window, the card also shows a paused track, or **SEM MUSICA** / **NOTHING** when there is no track. The title wraps to two lines. A longer name is cut with `..`.
+
+### League
+
+With the game window in front, and a match answering on `leagueLiveUrl`, the keyboard shows the champion. The executable names are `leagueApps` in `config/screen.json`. The level on the sticker comes from the same reply. The sample card is in the row above, beside Discord and Spotify. The name on that picture is a sample. On the keyboard it is the champion the open match returns. Cursor and Claude stay in front of it. Skill lights stay off: the match does not say whether a skill is ready, and the keyboard light packet is not captured yet.
 
 ### Cursor
 
@@ -161,13 +170,14 @@ The steps are in [`docs/tecnicos/tela.md`](docs/tecnicos/tela.md): the 128×128 
 
 ```text
 Screen Studio.bat          starts the program with no terminal
-assets/                    project logo and the three screen previews
+assets/                    project logo and the screen previews
 config/screen.json         watched apps, quota URLs, and language (pt or en)
 src/app.py                 tray and window
 src/i18n.py                Portuguese and English labels
 src/screen_frame.py        picks the image from the focused window
 src/discord_status.py      Discord online, call, and mic
 src/spotify_now.py         Spotify track from the Windows media session
+src/lol_match.py           champion from the open League match
 src/stats_render.py        draws the cards
 src/titorion_screen.py     screen protocol
 src/active_app.py          front window
