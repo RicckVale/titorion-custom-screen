@@ -86,7 +86,7 @@ Comando novo, fora de `0x40` / `0x41` / `0x42` e das páginas já documentadas, 
 
 O Discord (`src/discord_status.py`, lista `discordApps`) mostra online, conversa e microfone quando a janela dele está na frente. Numa chamada de voz, esse cartaz reveza com o que as outras regras escolheriam (Claude, Cursor, Spotify ou o relógio), cerca de 10 segundos cada. O campeão não entra nessa troca: com o jogo na frente, a tela fica nele. Ao sair da conversa, fica quem está na frente.
 
-O Spotify (`src/spotify_now.py`, lista `spotifyApps`) mostra a faixa da sessão de mídia do Windows. Tocando, ele troca o relógio. Com a janela do Spotify na frente, mostra também pausa ou a ausência de faixa. Cursor, Claude e a partida do League na frente continuam na frente. Na chamada do Discord, o Spotify entra na vez dele quando teria trocado o relógio.
+O Spotify (`src/spotify_now.py`, lista `spotifyApps`) mostra a faixa da sessão de mídia do Windows. Tocando, ele troca o relógio. Com a janela do Spotify na frente, mostra também pausa ou a ausência de faixa. Se essa leitura não responder, a tela segue para o relógio em vez de ficar no cartaz anterior. Cursor, Claude e a partida do League na frente continuam na frente. Na chamada do Discord, o Spotify entra na vez dele quando teria trocado o relógio.
 
 O League (`src/lol_match.py`, lista `leagueApps`) mostra o campeão enquanto o executável da partida está aberto e a partida responde em `leagueLiveUrl`. Não precisa ser a janela da frente. Cursor ou Claude na frente continuam na frente. O nome e o nível vêm da partida. Uma partida nova é outro processo: o campeão anterior sai na hora. Se a leitura piscar no meio do jogo, o último campeão continua na tela. Quando o nome muda, e de novo quando a partida fecha, o Screen Studio esvazia as imagens guardadas e grava o cartaz seguinte. Sem isso a foto do campeão continua na tela. O relógio roxo pode aparecer nesse intervalo. Uma chamada do Discord não cobre esse cartaz. A resposta não diz se uma skill está pronta, e o comando de luz do teclado ainda não foi capturado, então as teclas não mudam de cor. Um erro de envio não desliga o monitor: ele tenta de novo.
 
@@ -161,3 +161,4 @@ No teclado, o Screen Studio sobe pela bandeja (`Screen Studio.bat`). A janela n�
 - 24/10/2026 — Os cartazes do Discord e do Spotify ganharam a marca no cabeçalho, no mesmo lugar da marca do League.
 - 24/10/2026 — Troca de campeão esvazia a galeria antes de gravar. Uma leitura que pisca no meio da mesma partida não tira o cartaz.
 - 25/10/2026 — Ao fechar a partida, a imagem do campeão sai da tela. A galeria é esvaziada e o cartaz seguinte entra.
+- 25/10/2026 — Uma leitura do Spotify que não responde não segura a troca de cartaz.
