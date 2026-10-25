@@ -82,7 +82,7 @@ Comando novo, fora de `0x40` / `0x41` / `0x42` e das páginas já documentadas, 
 
 ## App em foco
 
-`src/active_app.py` olha a janela da frente, não uma janela aberta atrás. O nome do executável entra em `config/screen.json`, em `programmingApps`. Aí `build_frame()` pode desenhar uma tela só para aquele app.
+`src/active_app.py` olha a janela da frente, não uma janela aberta atrás. O nome do executável entra em `config/screen.json`, em `programmingApps`. Aí `build_frame()` pode desenhar uma tela só para aquele app. Cursor, Claude e Antigravity entram nessa lista.
 
 O Discord (`src/discord_status.py`, lista `discordApps`) mostra online, conversa e microfone quando a janela dele está na frente. Numa chamada de voz, esse cartaz reveza com o relógio e o tempo, no intervalo `weatherTurnSeconds` (no mínimo 10 segundos). O campeão não entra nessa troca: com a partida aberta, a tela fica nele. Ao sair da conversa, fica quem está na frente.
 
@@ -124,6 +124,22 @@ O pedido é um GET para a URL em `config/screen.json` (`claudeUsageUrl`), com `{
 | Tempo até reiniciar, no adesivo | `resets_at` do limite semanal, mostrado em minutos, horas ou dias |
 
 Uma organização que só tem acesso de API, e não a sessão do chat, não devolve esse uso. A janela do Claude precisa ser a da frente.
+
+### Antigravity
+
+O aplicativo guarda o login no cofre de credenciais do Windows, no alvo `gemini:antigravity`. O Screen Studio lê esse segredo só para chamar a cota e não grava o token neste projeto.
+
+Com o Antigravity aberto, a leitura é a mesma da página Models & Usage: os grupos que o servidor local do aplicativo devolve. Cada grupo traz o que ainda resta na semana e, quando existe, nas 5 horas. O cartaz não mostra o nome de um modelo.
+
+Se o aplicativo não está aberto, o pedido é um POST para a URL em `config/screen.json` (`antigravityUsageUrl`), corpo `{}`, com o token como Bearer. O agente HTTP leva a versão instalada do Antigravity. Sem essa versão a resposta deixa o grupo Gemini de fora.
+
+| Na tela | Campo |
+|---|---|
+| Grupo (Gemini, Claude e GPT, Argon, ou o que a conta devolver) | `groups[].displayName` |
+| O que resta na semana e nas 5 horas | `groups[].buckets[].remainingFraction`, janela em `window` |
+| Tempo até o próximo reinício, no adesivo | `resetTime` mais próximo |
+
+A cor segue o quanto já foi usado: verde até 50%, amarelo até 75%, vermelho acima. A janela do Antigravity precisa ser a da frente.
 
 ### Discord, Spotify e League
 
@@ -171,3 +187,4 @@ No teclado, o Screen Studio sobe pela bandeja (`Screen Studio.bat`). A janela n�
 - 25/10/2026 — O cartaz do tempo ganhou ícone em pixel da condição: sol, nuvem, chuva, neve e tempestade.
 - 25/10/2026 — Com uma faixa tocando, o Spotify entra na troca do cartaz da vez. O nome sai da janela e o tocando sai do áudio, porque a sessão de mídia pode não responder.
 - 25/10/2026 — A capa da faixa volta ao cartaz pelo catálogo público da música, quando a sessão de mídia não manda a imagem.
+- 25/10/2026 — O cartaz do Antigravity mostra o que resta em cada grupo da página de uso, com a marca no cabeçalho, quando a janela dele está na frente.

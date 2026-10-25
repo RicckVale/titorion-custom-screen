@@ -68,7 +68,7 @@ def foreground_matches(names: list[str]) -> bool:
 
 
 def programming_app(watched: list[str]) -> str:
-    """Nome amigavel se a janela da frente for Cursor, Claude, ou um site deles.
+    """Nome amigavel se a janela da frente for Cursor, Claude, Antigravity, ou um site deles.
 
     Claude aberto atras do Cursor nao conta: a telinha segue quem esta na frente.
     """

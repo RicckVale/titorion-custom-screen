@@ -31,6 +31,8 @@ BLURPLE = (88, 101, 242)
 SPOTIFY = (29, 185, 84)
 # Azul do cartaz do campeão. Texto branco em cima.
 LEAGUE = (47, 80, 180)
+# Azul amostrado do ícone do Antigravity. A marca branca senta em cima.
+AGY = (56, 134, 255)
 
 
 @lru_cache(maxsize=8)
@@ -902,6 +904,113 @@ def render_discord(state: dict) -> Image.Image:
     return img
 
 
+# A do ícone, desenhado no pixel. O miolo vazio é o furo; sem isso vira um triângulo branco.
+_ANTIGRAVITY_A = (
+    "..............",
+    "......##......",
+    ".....####.....",
+    "....##..##....",
+    "...##....##...",
+    "...##....##...",
+    "..##......##..",
+    "..##########..",
+    "..##......##..",
+    ".##........##.",
+    "##..........##",
+    "##..........##",
+    "..............",
+    "..............",
+)
+
+
+def _antigravity_mark(size: int) -> Image.Image:
+    """A branco, no tamanho do cabeçalho. Cada # é um pixel, sem suavizar."""
+    rows = _ANTIGRAVITY_A
+    side = len(rows)
+    mask = Image.new("L", (side, side), 0)
+    pixels = mask.load()
+    for y, row in enumerate(rows):
+        for x, cell in enumerate(row):
+            if cell == "#":
+                pixels[x, y] = 255
+    if size != side:
+        mask = mask.resize((size, size), Image.Resampling.NEAREST)
+    tint = Image.new("RGBA", mask.size, (*WHITE, 255))
+    image = Image.new("RGBA", mask.size, (0, 0, 0, 0))
+    image.paste(tint, mask=mask)
+    return image
+
+
+def _render_antigravity(quota: dict) -> Image.Image:
+    """O que resta em cada grupo. Semana e 5 horas dividem a faixa."""
+    img = Image.new("RGB", (SCREEN_W, SCREEN_H), PAPER)
+    draw = ImageDraw.Draw(img)
+    _block(draw, (4, 4, 84, 26), AGY, shadow=2)
+    mark = _antigravity_mark(14)
+    img.paste(mark, (8, 8), mark)
+    title = t("antigravity_name")
+    draw.text(
+        (26, 15), title,
+        font=_display(_fit_text(draw, title, 12, 54)),
+        fill=WHITE, anchor="lm",
+    )
+    groups = [group for group in (quota.get("groups") or []) if group.get("buckets")]
+    if not quota.get("ok") or not groups:
+        _block(draw, (4, 34, 120, 120), RED)
+        draw.text((62, 78), t("no_quota"), font=_display(18), fill=INK, anchor="mm")
+        return img
+
+    _block(draw, (90, 4, 122, 26), PAPER, shadow=2)
+    draw.text((106, 15), str(quota.get("reset_label") or "--"), font=_display(13), fill=INK, anchor="mm")
+    groups = groups[:3]
+    top, bottom, gap = 32, 121, 4
+    height = (bottom - top - gap * (len(groups) - 1)) // len(groups)
+    y = top
+    for group in groups:
+        _antigravity_group(draw, (4, y, 120, y + height), group)
+        y += height + gap
+    return img
+
+
+def _antigravity_group(draw: ImageDraw.ImageDraw, box: tuple, group: dict) -> None:
+    x0, y0, x1, y1 = box
+    buckets = group["buckets"]
+    tight = min(float(bucket["remaining_pct"]) for bucket in buckets)
+    _block(draw, box, _level_color(100.0 - tight), shadow=2)
+    label = str(group.get("label") or "")
+    slots = buckets[:2]
+    tall = y1 - y0 >= 40
+    if tall:
+        draw.text((8, y0 + 4), label, font=_display(12), fill=INK, anchor="lt")
+        span = (x1 - x0 - 8) // len(slots)
+        for index, bucket in enumerate(slots):
+            cx = x0 + 4 + span * index + span // 2
+            window = t("antigravity_5h") if bucket["window"] == "5h" else t("antigravity_week")
+            draw.text((cx, y0 + 18), window, font=_display(8), fill=INK, anchor="mt")
+            draw.text(
+                (cx, y1 - 4),
+                f"{float(bucket['remaining_pct']):.0f}%",
+                font=_display(16),
+                fill=INK,
+                anchor="mb",
+            )
+        return
+    draw.text((8, y0 + 2), label, font=_display(10), fill=INK, anchor="lt")
+    line = y1 - 3
+    span = (x1 - x0 - 8) // len(slots)
+    for index, bucket in enumerate(slots):
+        left = x0 + 6 + span * index
+        window = t("antigravity_5h") if bucket["window"] == "5h" else t("antigravity_week")
+        draw.text((left, line), window, font=_display(8), fill=INK, anchor="lb")
+        draw.text(
+            (left + span - 4, line),
+            f"{float(bucket['remaining_pct']):.0f}%",
+            font=_display(13),
+            fill=INK,
+            anchor="rb",
+        )
+
+
 def render_usage(quota: dict, app_name: str) -> Image.Image:
     """Auto em destaque, API em segundo, incluído só no canto.
 
@@ -910,6 +1019,8 @@ def render_usage(quota: dict, app_name: str) -> Image.Image:
     """
     if quota.get("source") == "claude":
         return _render_claude(quota, app_name)
+    if quota.get("source") == "antigravity":
+        return _render_antigravity(quota)
     img = Image.new("RGB", (SCREEN_W, SCREEN_H), PAPER)
     d = ImageDraw.Draw(img)
     is_cursor = app_name.strip().lower() == "cursor"

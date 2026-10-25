@@ -1,7 +1,8 @@
 {
   "programmingApps": [
     "Cursor.exe",
-    "claude.exe"
+    "claude.exe",
+    "Antigravity.exe"
   ],
   "discordApps": [
     "Discord.exe"
@@ -15,6 +16,7 @@
   "leagueLiveUrl": "https://127.0.0.1:2999/liveclientdata",
   "usageUrl": "https://api2.cursor.sh/aiserver.v1.DashboardService/GetCurrentPeriodUsage",
   "claudeUsageUrl": "https://claude.ai/api/organizations/{org}/usage",
+  "antigravityUsageUrl": "https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary",
   "language": "pt",
   "weatherCity": "",
   "weatherTurnSeconds": 10

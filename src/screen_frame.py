@@ -3,6 +3,7 @@
 import time
 
 from active_app import foreground_matches, matching_pid, programming_app
+from antigravity_quota import fetch_antigravity_usage
 from claude_quota import fetch_claude_usage
 from discord_status import discord_snapshot
 from i18n import current, t
@@ -126,6 +127,21 @@ def _quota_frame(cfg: dict, lang: str, app: str) -> tuple:
         else:
             text = t("log_claude_miss")
         return img, text, f"limite:Claude:{lang}"
+    if app == "Antigravity":
+        quota = fetch_antigravity_usage()
+        img = render_usage(quota, app)
+        if quota.get("ok"):
+            parts = []
+            for group in quota.get("groups") or []:
+                bits = " ".join(
+                    f"{bucket['window']} {bucket['remaining_pct']:.0f}%"
+                    for bucket in group.get("buckets") or []
+                )
+                parts.append(f"{group.get('label') or ''} {bits}".strip())
+            text = t("log_antigravity", detail=" | ".join(parts))
+        else:
+            text = t("log_antigravity_miss")
+        return img, text, f"limite:Antigravity:{lang}"
     quota = fetch_period_usage()
     img = render_usage(quota, app)
     if quota.get("ok"):

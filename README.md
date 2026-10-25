@@ -12,18 +12,23 @@ A tela de fábrica, e a mesma foto com o cartaz do Claude nesse lugar:
 
 ## Cartazes
 
-| Cursor | Claude | Relógio e tempo |
+| Cursor | Claude | Antigravity |
 |---|---|---|
-| ![Cota do Cursor](assets/preview-cursor.png) | ![Cota do Claude](assets/preview-claude.png) | ![Relógio, CPU e RAM](assets/preview-stats.png)<br>![Tempo](assets/preview-weather.png) |
+| ![Cota do Cursor](assets/preview-cursor.png) | ![Cota do Claude](assets/preview-claude.png) | ![Cota do Antigravity](assets/preview-antigravity.png) |
 
 | Discord, sem chamada | Spotify, tocando | League, na partida |
 |---|---|---|
 | ![Discord livre](assets/preview-discord.png) | ![Spotify tocando](assets/preview-spotify.png) | ![Campeão](assets/preview-champion.png) |
 
+| Relógio e tempo |  |  |
+|---|---|---|
+| ![Relógio, CPU e RAM](assets/preview-stats.png)<br>![Tempo](assets/preview-weather.png) |  |  |
+
 | Janela da frente | O que aparece |
 |---|---|
 | Cursor | Cota da conta: Auto, API e o incluído. Verde até 50%, amarelo até 75%, vermelho acima. |
 | Claude | A semana de todos os modelos, a sessão, e o tempo até reiniciar. |
+| Antigravity | O que ainda resta na semana e nas 5 horas, por grupo. Verde até 50% de uso, amarelo até 75%, vermelho acima. |
 | Discord | Online, em chamada ou livre, e o microfone. Numa chamada, reveza com o outro cartaz, cerca de 10 segundos cada. |
 | Spotify | Faixa, artista e a capa. Na frente, mostra também a pausa. Tocando, reveza com o cartaz da vez, no mesmo intervalo do tempo. O campeão da partida não sai. |
 | League | O campeão da partida, com o nível. |

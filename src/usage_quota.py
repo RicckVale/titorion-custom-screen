@@ -28,6 +28,9 @@ def load_screen_config() -> dict:
     claude_url = (data.get("claudeUsageUrl") or "").strip()
     if "{org}" not in claude_url:
         raise RuntimeError(f"config/screen.json sem url do Claude: {path}")
+    antigravity_url = (data.get("antigravityUsageUrl") or "").strip()
+    if not antigravity_url:
+        raise RuntimeError(f"config/screen.json sem url do Antigravity: {path}")
     discord_apps = data.get("discordApps") or []
     spotify_apps = data.get("spotifyApps") or []
     league_apps = data.get("leagueApps") or []
@@ -35,6 +38,7 @@ def load_screen_config() -> dict:
         "programmingApps": list(apps),
         "usageUrl": url,
         "claudeUsageUrl": claude_url,
+        "antigravityUsageUrl": antigravity_url,
         "discordApps": [str(name) for name in discord_apps if str(name).strip()],
         "spotifyApps": [str(name) for name in spotify_apps if str(name).strip()],
         "leagueApps": [str(name) for name in league_apps if str(name).strip()],
