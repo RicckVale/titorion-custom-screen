@@ -8,8 +8,12 @@ from discord_status import discord_snapshot
 from i18n import current, t
 from lol_match import league_champion
 from spotify_now import spotify_now
-from stats_render import collect_stats, render, render_discord, render_league, render_spotify, render_usage
+from stats_render import (
+    collect_stats, render, render_discord, render_league, render_spotify, render_usage,
+    render_weather,
+)
 from usage_quota import fetch_period_usage, load_screen_config
+from weather import turn_seconds, weather_now
 
 
 def _discord_frame(snap: dict, lang: str) -> tuple:
@@ -58,9 +62,32 @@ def _league_frame(match: dict, lang: str) -> tuple:
 _TURN_SECONDS = 10.0
 
 
-def _turn(frames: list[tuple]) -> tuple:
-    slot = int(time.monotonic() // _TURN_SECONDS) % len(frames)
+def _turn(frames: list[tuple], seconds: float = _TURN_SECONDS) -> tuple:
+    pace = max(_TURN_SECONDS, float(seconds))
+    slot = int(time.monotonic() // pace) % len(frames)
     return frames[slot]
+
+
+def _weather_frame(cfg: dict, lang: str) -> tuple | None:
+    report = weather_now(cfg.get("weatherCity") or "", lang)
+    if not report:
+        return None
+    condition = t(f"weather_{report['tone']}")
+    shown = {**report, "condition": condition}
+    img = render_weather(shown)
+    text = t("log_weather", temp=report["temp_c"], condition=condition)
+    return img, text, f"weather:{lang}:{report['tone']}:{report['temp_c']}"
+
+
+def _clock_frame(cfg: dict, lang: str) -> tuple:
+    stats = collect_stats()
+    img = render(stats)
+    text = f"cpu {stats['cpu']:.0f}% | ram {stats['ram']:.0f}% | {stats['time']}"
+    weather = _weather_frame(cfg, lang)
+    clock = (img, text, f"stats:{lang}")
+    if weather is None:
+        return clock
+    return _turn([clock, weather], turn_seconds(cfg.get("weatherTurnSeconds")))
 
 
 def _league_now(cfg: dict, lang: str) -> tuple | None:
@@ -120,12 +147,7 @@ def _other_frame(cfg: dict, lang: str) -> tuple:
         # Tocando, o cartaz troca o relógio. Cursor e Claude ficam na frente.
         if track["playing"] or foreground_matches(spotify_apps):
             return _spotify_frame(track, lang)
-    stats = collect_stats()
-    img = render(stats)
-    text = (
-        f"cpu {stats['cpu']:.0f}% | ram {stats['ram']:.0f}% | {stats['time']}"
-    )
-    return img, text, f"stats:{lang}"
+    return _clock_frame(cfg, lang)
 
 
 def build_frame() -> tuple:

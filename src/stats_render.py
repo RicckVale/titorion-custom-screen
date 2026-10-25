@@ -7,6 +7,7 @@ O Screen Studio escolhe o cartaz em screen_frame.py. Cada cartaz é uma função
 import re
 from datetime import datetime
 from functools import lru_cache
+from io import BytesIO
 
 import psutil
 from PIL import Image, ImageDraw, ImageFont
@@ -120,6 +121,164 @@ def render(stats: dict) -> Image.Image:
     d.text((92, 88), t("ram"), font=_display(11), fill=INK, anchor="mm")
     d.text((92, 106), f"{ram:.0f}%", font=_display(18), fill=INK, anchor="mm")
     return img
+
+
+def render_weather(report: dict) -> Image.Image:
+    """Temperatura em destaque, condição e cidade embaixo."""
+    img = Image.new("RGB", (SCREEN_W, SCREEN_H), PAPER)
+    draw = ImageDraw.Draw(img)
+    condition = (report.get("condition") or "").strip()
+    city = (report.get("city") or "").strip()
+    temp = report.get("temp_c")
+    tone = _weather_color(str(report.get("tone") or ""))
+
+    _block(draw, (5, 5, 116, 30), tone, shadow=2)
+    draw.text(
+        (60, 17), t("weather_name"),
+        font=_display(_fit_text(draw, t("weather_name"), 16, 100)),
+        fill=INK, anchor="mm",
+    )
+    _block(draw, (5, 38, 116, 92), YELLOW)
+    icon = _weather_icon(str(report.get("tone") or "cloud"), 3)
+    iy = 38 + (54 - icon.height) // 2
+    img.paste(icon, (12, iy), icon)
+    label = f"{int(temp)} C" if isinstance(temp, int) else "--"
+    draw.text(
+        (84, 65), label,
+        font=_display(_fit_text(draw, label, 26, 40)),
+        fill=INK, anchor="mm",
+    )
+    _block(draw, (5, 100, 116, 122), PAPER, shadow=2)
+    foot = condition if not city else f"{condition}  {city}"
+    draw.text(
+        (60, 111), foot,
+        font=_display(_fit_text(draw, foot, 12, 100)),
+        fill=INK, anchor="mm",
+    )
+    return img
+
+
+def _weather_color(tone: str) -> tuple:
+    if tone == "storm":
+        return RED
+    if tone == "clear":
+        return YELLOW
+    if tone in {"rain", "cloud", "snow"}:
+        return CYAN
+    return PAPER
+
+
+# Grades de 8 bits. O ponto vira um quadrado inteiro, sem suavizar.
+_WEATHER_PIXELS = {
+    "clear": (
+        "....y....",
+        ".y.yyy.y.",
+        "..yyyyy..",
+        "yyyyyyyyy",
+        "..yyyyy..",
+        ".y.yyy.y.",
+        "....y....",
+    ),
+    "cloud": (
+        "...wwww...",
+        ".wwwwwwww.",
+        "wwwwwwwwww",
+        "wwwwwwwwww",
+        ".wwwwwwww.",
+    ),
+    "fog": (
+        "wwwwww....",
+        "....wwwwww",
+        "wwwwww....",
+        "....wwwwww",
+        "wwwwww....",
+    ),
+    "drizzle": (
+        "...wwww...",
+        ".wwwwwwww.",
+        "wwwwwwwwww",
+        ".wwwwwwww.",
+        ".c....c...",
+        "....c.....",
+    ),
+    "rain": (
+        "...wwww...",
+        ".wwwwwwww.",
+        "wwwwwwwwww",
+        ".wwwwwwww.",
+        "c...c...c.",
+        ".c...c...c",
+        "c...c...c.",
+    ),
+    "snow": (
+        "...wwww...",
+        ".wwwwwwww.",
+        "wwwwwwwwww",
+        ".wwwwwwww.",
+        "w.w...w.w.",
+        ".w.w.w.w..",
+        "w.w...w.w.",
+    ),
+    "storm": (
+        "...kkkk...",
+        ".kkkkkkkk.",
+        "kkkkkkkkkk",
+        "..kkkkkk..",
+        "....yy....",
+        "...yy.....",
+        "..yyyy....",
+        "...yy.....",
+        "....yy....",
+    ),
+}
+_PIXEL_COLOR = {
+    "y": YELLOW,
+    "w": WHITE,
+    "c": CYAN,
+    "k": INK,
+}
+
+
+def _weather_icon(tone: str, scale: int) -> Image.Image:
+    """Ícone em pixel da condição. Cada letra da grade é um quadrado, com borda preta."""
+    rows = _WEATHER_PIXELS.get(tone) or _WEATHER_PIXELS["cloud"]
+    width = max(len(row) for row in rows)
+    height = len(rows)
+    filled = {
+        (col, row)
+        for row, line in enumerate(rows)
+        for col, mark in enumerate(line)
+        if mark in _PIXEL_COLOR
+    }
+    outline = set()
+    for col, row in filled:
+        for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            neighbor = (col + dc, row + dr)
+            if neighbor not in filled:
+                outline.add(neighbor)
+    shift = 1
+    image = Image.new(
+        "RGBA",
+        ((width + 2) * scale, (height + 2) * scale),
+        (0, 0, 0, 0),
+    )
+    pixels = image.load()
+
+    def stamp(col: int, row: int, color: tuple) -> None:
+        ox = (col + shift) * scale
+        oy = (row + shift) * scale
+        for dy in range(scale):
+            for dx in range(scale):
+                pixels[ox + dx, oy + dy] = (*color, 255)
+
+    for col, row in outline:
+        stamp(col, row, INK)
+    for row, line in enumerate(rows):
+        for col, mark in enumerate(line):
+            color = _PIXEL_COLOR.get(mark)
+            if color is not None:
+                stamp(col, row, color)
+    return image
 
 
 @lru_cache(maxsize=4)
@@ -266,6 +425,65 @@ def _fit_text(draw: ImageDraw.ImageDraw, text: str, max_size: int, max_width: in
     return size
 
 
+def _wrap_exact(draw: ImageDraw.ImageDraw, text: str, size: int,
+                max_width: int, max_lines: int) -> list[str] | None:
+    """Quebra o nome inteiro. None se neste tamanho ainda sobra palavra de fora."""
+    words = [part for part in text.split() if part]
+    if not words:
+        return []
+    lines: list[str] = []
+    current = ""
+    for word in words:
+        trial = word if not current else f"{current} {word}"
+        if draw.textlength(trial, font=_display(size)) <= max_width:
+            current = trial
+            continue
+        if not current:
+            return None
+        lines.append(current)
+        current = word
+        if len(lines) >= max_lines:
+            return None
+    if current:
+        lines.append(current)
+    return lines
+
+
+def _fit_lines(draw: ImageDraw.ImageDraw, text: str, max_width: int, max_height: int,
+               max_size: int, max_lines: int = 2) -> tuple[int, list[str]]:
+    """Maior letra em que o nome cabe por inteiro. Nome curto cresce, nome longo encolhe."""
+    for size in range(max_size, 7, -1):
+        lines = _wrap_exact(draw, text, size, max_width, max_lines)
+        if not lines:
+            continue
+        height = 0
+        for line in lines:
+            box = draw.textbbox((0, 0), line, font=_display(size))
+            height += box[3] - box[1]
+        height += max(0, len(lines) - 1)
+        if height <= max_height:
+            return size, lines
+    lines = _wrap_lines(draw, text, 8, max_width, max_lines) or [text]
+    return 8, lines
+
+
+def _draw_fitted(draw: ImageDraw.ImageDraw, text: str, box: tuple, max_size: int,
+                 fill: tuple, max_lines: int = 2) -> None:
+    x0, y0, x1, y1 = box
+    size, lines = _fit_lines(draw, text, x1 - x0 - 8, y1 - y0 - 4, max_size, max_lines)
+    heights = [
+        draw.textbbox((0, 0), line, font=_display(size))[3]
+        - draw.textbbox((0, 0), line, font=_display(size))[1]
+        for line in lines
+    ]
+    total = sum(heights) + max(0, len(lines) - 1)
+    top = y0 + (y1 - y0 - total) / 2
+    center = (x0 + x1) / 2
+    for line, height in zip(lines, heights):
+        draw.text((center, top), line, font=_display(size), fill=fill, anchor="mt")
+        top += height + 1
+
+
 def _wrap_lines(draw: ImageDraw.ImageDraw, text: str, size: int,
                 max_width: int, max_lines: int) -> list[str]:
     words = [part for part in text.split() if part]
@@ -296,6 +514,29 @@ def _wrap_lines(draw: ImageDraw.ImageDraw, text: str, size: int,
     return lines
 
 
+def _cover_image(raw: object, width: int, height: int) -> Image.Image | None:
+    """Recorte central da capa, no tamanho do cartaz."""
+    if not isinstance(raw, (bytes, bytearray)) or not raw:
+        return None
+    try:
+        art = Image.open(BytesIO(raw)).convert("RGB")
+    except Exception:
+        return None
+    src_w, src_h = art.size
+    if src_w < 1 or src_h < 1:
+        return None
+    target = width / height
+    if src_w / src_h > target:
+        crop_w = int(src_h * target)
+        left = (src_w - crop_w) // 2
+        art = art.crop((left, 0, left + crop_w, src_h))
+    else:
+        crop_h = int(src_w / target)
+        top = (src_h - crop_h) // 2
+        art = art.crop((0, top, src_w, top + crop_h))
+    return art.resize((width, height), Image.Resampling.LANCZOS)
+
+
 def render_spotify(track: dict) -> Image.Image:
     """Nome da faixa em destaque, artista embaixo, estado no topo do cartaz."""
     img = Image.new("RGB", (SCREEN_W, SCREEN_H), PAPER)
@@ -324,15 +565,23 @@ def render_spotify(track: dict) -> Image.Image:
         )
         return img
 
-    _block(draw, (4, 34, 120, 96), GREEN if playing else YELLOW)
     state = t("spotify_playing") if playing else t("spotify_paused")
-    draw.text((62, 40), state, font=_display(11), fill=INK, anchor="mt")
-    lines = _wrap_lines(draw, title, 16, 104, 2)
-    if not lines:
-        lines = _wrap_lines(draw, title, 12, 104, 2)
-    top = 58 if len(lines) > 1 else 66
-    for index, line in enumerate(lines):
-        draw.text((62, top + index * 18), line, font=_display(16), fill=INK, anchor="mt")
+    cover = _cover_image(track.get("cover"), 112, 32)
+    if cover is not None:
+        _block(draw, (4, 32, 120, 70), INK, shadow=2)
+        img.paste(cover, (6, 34))
+        _block(draw, (58, 36, 116, 52), GREEN if playing else YELLOW, shadow=2)
+        draw.text(
+            (87, 44), state,
+            font=_display(_fit_text(draw, state, 11, 52)),
+            fill=INK, anchor="mm",
+        )
+        _block(draw, (4, 72, 120, 100), PAPER, shadow=2)
+        _draw_fitted(draw, title, (4, 72, 120, 100), 18, INK)
+    else:
+        _block(draw, (4, 34, 120, 96), GREEN if playing else YELLOW)
+        draw.text((62, 40), state, font=_display(11), fill=INK, anchor="mt")
+        _draw_fitted(draw, title, (4, 48, 120, 96), 22, INK)
 
     _block(draw, (4, 102, 120, 121), PAPER, shadow=2)
     who = artist or state

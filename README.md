@@ -12,9 +12,9 @@ A tela de fábrica, e a mesma foto com o cartaz do Claude nesse lugar:
 
 ## Cartazes
 
-| Cursor | Claude | Relógio, CPU e RAM |
+| Cursor | Claude | Relógio e tempo |
 |---|---|---|
-| ![Cota do Cursor](assets/preview-cursor.png) | ![Cota do Claude](assets/preview-claude.png) | ![Relógio, CPU e RAM](assets/preview-stats.png) |
+| ![Cota do Cursor](assets/preview-cursor.png) | ![Cota do Claude](assets/preview-claude.png) | ![Relógio, CPU e RAM](assets/preview-stats.png)<br>![Tempo](assets/preview-weather.png) |
 
 | Discord, sem chamada | Spotify, tocando | League, na partida |
 |---|---|---|
@@ -25,9 +25,9 @@ A tela de fábrica, e a mesma foto com o cartaz do Claude nesse lugar:
 | Cursor | Cota da conta: Auto, API e o incluído. Verde até 50%, amarelo até 75%, vermelho acima. |
 | Claude | A semana de todos os modelos, a sessão, e o tempo até reiniciar. |
 | Discord | Online, em chamada ou livre, e o microfone. Numa chamada, reveza com o outro cartaz, cerca de 10 segundos cada. |
-| Spotify | Faixa, artista, tocando ou em pausa. Tocando, entra no lugar do relógio. |
+| Spotify | Faixa, artista e a capa, tocando ou em pausa. Tocando, entra no lugar do relógio. |
 | League | O campeão da partida, com o nível. |
-| Qualquer outra | Relógio, CPU e RAM. |
+| Qualquer outra | Relógio, CPU e RAM, revezando com o tempo. O intervalo é `weatherTurnSeconds` em `config/screen.json`, no mínimo 10 segundos. |
 
 Os números saem da sessão já aberta neste computador. Não há cota fixa no código, e nenhum token fica neste repositório. **PT** e **EN**, na janela do programa, trocam o texto dos cartazes. De onde vem cada número: [`docs/tecnicos/tela.md`](docs/tecnicos/tela.md).
 

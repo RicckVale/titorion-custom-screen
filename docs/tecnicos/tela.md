@@ -86,7 +86,9 @@ Comando novo, fora de `0x40` / `0x41` / `0x42` e das páginas já documentadas, 
 
 O Discord (`src/discord_status.py`, lista `discordApps`) mostra online, conversa e microfone quando a janela dele está na frente. Numa chamada de voz, esse cartaz reveza com o que as outras regras escolheriam (Claude, Cursor, Spotify ou o relógio), cerca de 10 segundos cada. O campeão não entra nessa troca: com o jogo na frente, a tela fica nele. Ao sair da conversa, fica quem está na frente.
 
-O Spotify (`src/spotify_now.py`, lista `spotifyApps`) mostra a faixa da sessão de mídia do Windows. Tocando, ele troca o relógio. Com a janela do Spotify na frente, mostra também pausa ou a ausência de faixa. Se essa leitura não responder, a tela segue para o relógio em vez de ficar no cartaz anterior. Cursor, Claude e a partida do League na frente continuam na frente. Na chamada do Discord, o Spotify entra na vez dele quando teria trocado o relógio.
+O Spotify (`src/spotify_now.py`, lista `spotifyApps`) mostra a faixa da sessão de mídia do Windows, com a capa quando ela vem junto. Tocando, ele troca o relógio. Com a janela do Spotify na frente, mostra também pausa ou a ausência de faixa. Se essa leitura não responder, a tela segue para o relógio em vez de ficar no cartaz anterior. Cursor, Claude e a partida do League na frente continuam na frente. Na chamada do Discord, o Spotify entra na vez dele quando teria trocado o relógio.
+
+Fora desses cartazes, o relógio reveza com o tempo. O intervalo está em `weatherTurnSeconds`.
 
 O League (`src/lol_match.py`, lista `leagueApps`) mostra o campeão enquanto o executável da partida está aberto e a partida responde em `leagueLiveUrl`. Não precisa ser a janela da frente. Cursor ou Claude na frente continuam na frente. O nome e o nível vêm da partida. Uma partida nova é outro processo: o campeão anterior sai na hora. Se a leitura piscar no meio do jogo, o último campeão continua na tela. Quando o nome muda, e de novo quando a partida fecha, o Screen Studio esvazia as imagens guardadas e grava o cartaz seguinte. Sem isso a foto do campeão continua na tela. O relógio roxo pode aparecer nesse intervalo. Uma chamada do Discord não cobre esse cartaz. A resposta não diz se uma skill está pronta, e o comando de luz do teclado ainda não foi capturado, então as teclas não mudam de cor. Um erro de envio não desliga o monitor: ele tenta de novo.
 
@@ -127,7 +129,9 @@ Uma organização que só tem acesso de API, e não a sessão do chat, não devo
 
 Online no Discord significa uma conexão TCP ativa. Em chamada significa que o log de voz do próprio aplicativo terminou em conectado. O microfone é a sessão de captura do Windows desse processo, e só aparece durante a chamada.
 
-O Spotify lê a sessão de mídia do Windows. Sem conta e sem token. O título quebra em duas linhas. Um nome maior é cortado com `..`.
+O Spotify lê a sessão de mídia do Windows. Sem conta e sem token. A capa vem dessa mesma sessão, quando o player manda. O nome da faixa cresce quando é curto e encolhe quando é longo, até caber inteiro no bloco.
+
+O tempo (`src/weather.py`) reveza com o relógio. O intervalo é `weatherTurnSeconds` em `config/screen.json`, no mínimo 10 segundos. A cidade é `weatherCity`. Vazia, o lugar sai da rede, uma vez, e a previsão sai do Open-Meteo, sem token. A leitura fica em cache por 10 minutos.
 
 No League, o nome da foto de exemplo não é fixo. No teclado, é o campeão que a partida aberta devolve.
 
@@ -162,3 +166,6 @@ No teclado, o Screen Studio sobe pela bandeja (`Screen Studio.bat`). A janela n�
 - 24/10/2026 — Troca de campeão esvazia a galeria antes de gravar. Uma leitura que pisca no meio da mesma partida não tira o cartaz.
 - 25/10/2026 — Ao fechar a partida, a imagem do campeão sai da tela. A galeria é esvaziada e o cartaz seguinte entra.
 - 25/10/2026 — Uma leitura do Spotify que não responde não segura a troca de cartaz.
+- 25/10/2026 — O tempo reveza com o relógio. A capa da faixa entra no cartaz do Spotify quando a sessão de mídia manda a imagem.
+- 25/10/2026 — O nome da faixa no Spotify encolhe para caber inteiro e cresce quando o título é curto.
+- 25/10/2026 — O cartaz do tempo ganhou ícone em pixel da condição: sol, nuvem, chuva, neve e tempestade.

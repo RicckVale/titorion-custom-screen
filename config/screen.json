@@ -15,5 +15,7 @@
   "leagueLiveUrl": "https://127.0.0.1:2999/liveclientdata",
   "usageUrl": "https://api2.cursor.sh/aiserver.v1.DashboardService/GetCurrentPeriodUsage",
   "claudeUsageUrl": "https://claude.ai/api/organizations/{org}/usage",
-  "language": "pt"
+  "language": "pt",
+  "weatherCity": "",
+  "weatherTurnSeconds": 10
 }

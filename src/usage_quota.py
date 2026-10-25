@@ -39,6 +39,8 @@ def load_screen_config() -> dict:
         "spotifyApps": [str(name) for name in spotify_apps if str(name).strip()],
         "leagueApps": [str(name) for name in league_apps if str(name).strip()],
         "leagueLiveUrl": str(data.get("leagueLiveUrl") or "").strip(),
+        "weatherCity": str(data.get("weatherCity") or "").strip(),
+        "weatherTurnSeconds": data.get("weatherTurnSeconds"),
     }
 
 

@@ -42,8 +42,32 @@ async def _read(tokens: list[str]) -> dict:
             "paused": status == _PAUSED,
             "title": title,
             "artist": artist,
+            "cover": await _cover(props),
         }
     return _empty()
+
+
+async def _cover(props: object) -> bytes | None:
+    """Bytes da capa na sessão de mídia. None se o player não mandar."""
+    thumb = getattr(props, "thumbnail", None)
+    if thumb is None:
+        return None
+    try:
+        from winrt.windows.storage.streams import DataReader
+
+        stream = await thumb.open_read_async()
+        size = int(stream.size)
+        if size <= 0 or size > 1_500_000:
+            return None
+        reader = DataReader(stream)
+        await reader.load_async(size)
+        raw = reader.read_bytes(reader.unconsumed_buffer_length)
+        reader.close()
+    except Exception:
+        return None
+    if isinstance(raw, (bytes, bytearray)):
+        return bytes(raw)
+    return bytes(raw)
 
 
 _cache = _empty()
