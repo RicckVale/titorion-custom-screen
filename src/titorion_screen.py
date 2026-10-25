@@ -21,7 +21,7 @@ import json
 import threading
 import time
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Optional
 
 import hid
 
@@ -195,12 +195,7 @@ class TitorionScreen:
                     raise
                 time.sleep(0.12)
 
-    def _send_buffer(
-        self,
-        cmd: int,
-        data: bytes,
-        on_progress: Optional[Callable[[float], None]] = None,
-    ) -> None:
+    def _send_buffer(self, cmd: int, data: bytes) -> None:
         """Fragmenta em pacotes de 56 bytes com offset — funções h9t/g9t do driver."""
         num_chunks = max(1, -(-len(data) // CHUNK_DATA))
         for p in range(num_chunks):
@@ -208,8 +203,6 @@ class TitorionScreen:
             chunk = data[offset:offset + CHUNK_DATA]
             report = build_report(cmd, offset & 0xFF, (offset >> 8) & 0xFF, chunk)
             self._send_with_retry(report)
-            if on_progress:
-                on_progress((p + 1) / num_chunks)
 
     # ---- API da tela (docs/protocol.md §4) ----
 

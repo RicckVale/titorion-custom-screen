@@ -133,7 +133,6 @@ def write_assets() -> None:
     folder = _ROOT / "assets"
     folder.mkdir(parents=True, exist_ok=True)
     banner().save(folder / "titorion-custom-screen.png")
-    icon(512).save(folder / "logo.png")
 
 
 if __name__ == "__main__":

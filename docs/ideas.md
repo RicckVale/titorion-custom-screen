@@ -4,7 +4,7 @@ Inspiração: um dev fez o visor do teclado mostrar o **limite diário de uso da
 Como a tela aceita imagem RGB565 arbitrária via HID, **qualquer coisa que vire imagem
 pode ir pro teclado** — basta um software gerar a imagem e reenviar periodicamente.
 
-## 1. Mini-monitor dinâmico (prioridade — base: `src/demo_stats.py`)
+## 1. Mini-monitor dinâmico (o Screen Studio já faz relógio, CPU, RAM, cotas e mídia)
 
 Software que gera a imagem 128×128 e atualiza a cada N segundos:
 
