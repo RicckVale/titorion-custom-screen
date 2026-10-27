@@ -5,3 +5,4 @@ config/screen_state.json
 preview_teste.png
 *.log
 .cursor/
+config/clock_state.json

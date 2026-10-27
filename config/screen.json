@@ -18,6 +18,8 @@
   "claudeUsageUrl": "https://claude.ai/api/organizations/{org}/usage",
   "antigravityUsageUrl": "https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary",
   "language": "pt",
+  "displays": ["keyboard", "clock"],
+  "clockHost": "192.168.25.62",
   "weatherCity": "",
   "weatherTurnSeconds": 10
 }

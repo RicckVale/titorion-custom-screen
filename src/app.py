@@ -27,9 +27,8 @@ from PIL import Image, ImageTk
 from brand_mark import icon as app_mark
 from i18n import current, set_language, t
 from screen_frame import build_frame
-from titorion_screen import (
-    TitorionScreen, SCREEN_W, SCREEN_H, gallery_reset_pending,
-)
+from displays import Displays
+from titorion_screen import SCREEN_W, SCREEN_H, gallery_reset_pending
 
 SCALE = 2
 PREVIEW = SCREEN_W * SCALE   # 256
@@ -88,7 +87,7 @@ class App(tk.Tk):
         self.configure(bg=BG_APP)
         self.resizable(False, False)
 
-        self.screen: TitorionScreen | None = None
+        self.screen: Displays | None = None
         self.monitor_on = False
         self.monitor_thread: threading.Thread | None = None
         self.static_img: Image.Image | None = None
@@ -344,10 +343,14 @@ class App(tk.Tk):
         try:
             if self.screen:
                 self.screen.close()
-            self.screen = TitorionScreen()
+            self.screen = Displays(
+                on_error=lambda msg: self.after(0, self.log, f"⚠ {msg}"))
             self.screen.connect()
             self.set_status(True, "connected")
-            self.log(t("keyboard_connected"))
+            if "keyboard" in self.screen.names:
+                self.log(t("keyboard_connected"))
+            if "clock" in self.screen.names:
+                self.log(t("clock_connected"))
             self.after(400, self._boot_screen)
         except Exception as e:
             self.screen = None
