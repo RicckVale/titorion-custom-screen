@@ -20,6 +20,6 @@
   "language": "pt",
   "displays": ["keyboard", "clock"],
   "clockHost": "192.168.25.62",
-  "weatherCity": "",
+  "weatherCity": "Arujá, SP",
   "weatherTurnSeconds": 10
 }

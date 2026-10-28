@@ -1,7 +1,8 @@
 """Tempo atual para o cartaz que reveza com o relógio.
 
-A cidade vem de config/screen.json (weatherCity). Vazia, a rede informa o
-lugar. A previsão é a do Open-Meteo, sem token. O intervalo da troca é
+A cidade vem de config/screen.json (weatherCity), como "Arujá" ou
+"Santa Maria, RS" (estado, sigla ou país depois da vírgula). Vazia, a rede
+informa o lugar, que costuma ser a cidade do provedor. A previsão é a do Open-Meteo, sem token. O intervalo da troca é
 weatherTurnSeconds, nunca abaixo de 10 s.
 """
 
@@ -9,6 +10,7 @@ from __future__ import annotations
 
 import json
 import time
+import unicodedata
 import urllib.parse
 import urllib.request
 
@@ -107,23 +109,52 @@ def _place(city: str, lang: str) -> dict | None:
 
 
 def _geocode(city: str, lang: str) -> dict | None:
+    """"Arujá" pega a primeira; "Santa Maria, RS" ou "Santa Maria, US" escolhe entre as homônimas."""
+    name, _, region = city.partition(",")
+    name, region = name.strip(), _plain(region)
     query = urllib.parse.urlencode({
-        "name": city,
-        "count": 1,
+        "name": name,
+        "count": 10 if region else 1,
         "language": "en" if lang == "en" else "pt",
     })
     payload = _get(f"https://geocoding-api.open-meteo.com/v1/search?{query}")
     results = payload.get("results") if isinstance(payload, dict) else None
     if not isinstance(results, list) or not results:
         return None
-    row = results[0]
-    if not isinstance(row, dict):
+    rows = [r for r in results if isinstance(r, dict)]
+    if region:
+        state = _UF.get(region, region)
+        rows = [
+            r for r in rows
+            if state in (_plain(r.get("admin1")), _plain(r.get("country")), _plain(r.get("country_code")))
+        ]
+    if not rows:
         return None
+    row = rows[0]
     lat, lon = row.get("latitude"), row.get("longitude")
-    name = str(row.get("name") or city).strip()
+    name = str(row.get("name") or name).strip()
     if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)) or not name:
         return None
     return {"lat": float(lat), "lon": float(lon), "city": name}
+
+
+def _plain(text: object) -> str:
+    """Sem acento e sem caixa, para "São Paulo" casar com "sao paulo"."""
+    decomposed = unicodedata.normalize("NFKD", str(text or ""))
+    return "".join(c for c in decomposed if not unicodedata.combining(c)).casefold().strip()
+
+
+# Siglas dos estados -> nome que o geocoder do Open-Meteo devolve em admin1.
+_UF = {_plain(k): _plain(v) for k, v in {
+    "AC": "Acre", "AL": "Alagoas", "AP": "Amapá", "AM": "Amazonas", "BA": "Bahia",
+    "CE": "Ceará", "DF": "Distrito Federal", "ES": "Espírito Santo", "GO": "Goiás",
+    "MA": "Maranhão", "MT": "Mato Grosso", "MS": "Mato Grosso do Sul",
+    "MG": "Minas Gerais", "PA": "Pará", "PB": "Paraíba", "PR": "Paraná",
+    "PE": "Pernambuco", "PI": "Piauí", "RJ": "Rio de Janeiro",
+    "RN": "Rio Grande do Norte", "RS": "Rio Grande do Sul", "RO": "Rondônia",
+    "RR": "Roraima", "SC": "Santa Catarina", "SP": "São Paulo", "SE": "Sergipe",
+    "TO": "Tocantins",
+}.items()}
 
 
 def _by_network() -> dict | None:

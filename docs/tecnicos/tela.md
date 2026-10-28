@@ -147,7 +147,7 @@ Online no Discord significa uma conexão TCP ativa. Em chamada significa que o l
 
 O Spotify lê o nome na janela do programa e o som na sessão de áudio do Windows. Sem conta e sem token. A capa vem do catálogo público da faixa. A sessão de mídia do Windows substitui essa imagem quando responde. O nome da faixa cresce quando é curto e encolhe quando é longo, até caber inteiro no bloco. Tocando, o cartaz reveza com o que estiver na vez. A partida aberta não entra nessa troca.
 
-O tempo (`src/weather.py`) reveza com o relógio. O intervalo é `weatherTurnSeconds` em `config/screen.json`, no mínimo 10 segundos. A cidade é `weatherCity`. Vazia, o lugar sai da rede, uma vez, e a previsão sai do Open-Meteo, sem token. A leitura fica em cache por 10 minutos.
+O tempo (`src/weather.py`) reveza com o relógio. O intervalo é `weatherTurnSeconds` em `config/screen.json`, no mínimo 10 segundos. A cidade é `weatherCity`, como `"Arujá"` ou `"Santa Maria, RS"` (sigla, estado ou país depois da vírgula). Vazia, o lugar sai da rede, uma vez, e a previsão sai do Open-Meteo, sem token. A leitura fica em cache por 10 minutos.
 
 No League, o nome da foto de exemplo não é fixo. No teclado, é o campeão que a partida aberta devolve.
 

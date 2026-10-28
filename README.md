@@ -34,6 +34,8 @@ A tela de fábrica, e a mesma foto com o cartaz do Claude nesse lugar:
 | League | O campeão da partida, com o nível. |
 | Qualquer outra | Relógio, CPU e RAM, revezando com o tempo. O intervalo é `weatherTurnSeconds` em `config/screen.json`, no mínimo 10 segundos. Uma faixa tocando entra nessa troca. |
 
+A cidade do tempo é `weatherCity` em `config/screen.json`, por exemplo `"Arujá, SP"`. Depois da vírgula vai a sigla do estado, o nome do estado ou o país, o que separa cidades com o mesmo nome. Vazia, o lugar sai do IP, que costuma ser a cidade do provedor e não a sua. A troca vale no próximo cartaz do tempo, sem reiniciar.
+
 Os números saem da sessão já aberta neste computador. Não há cota fixa no código, e nenhum token fica neste repositório. **PT** e **EN**, na janela do programa, trocam o texto dos cartazes. De onde vem cada número: [`docs/tecnicos/tela.md`](docs/tecnicos/tela.md).
 
 ## Como rodar
