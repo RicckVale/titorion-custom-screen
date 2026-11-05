@@ -98,6 +98,8 @@ Números de conta (cota do Cursor, limite do Claude) vêm da sessão local da pe
 
 O editor guarda o login em `%APPDATA%\Cursor\User\globalStorage\state.vscdb`, na chave `cursorAuth/accessToken`. O Screen Studio abre esse banco só para leitura e envia o token como cabeçalho Bearer. Ele não copia o token para este projeto.
 
+Nas versões recentes o valor vem cifrado, com o prefixo `cursor-safe-storage:v1:`. A leitura decifra na memória com a chave de `%APPDATA%\Cursor\Local State` (DPAPI e AES) e descarta o texto. Uma sessão antiga, ainda em texto, continua valendo do mesmo jeito. O texto cifrado não é enviado à API.
+
 O pedido é um POST para a URL em `config/screen.json` (`usageUrl`), corpo `{}`, com `Content-Type: application/json` e `Connect-Protocol-Version: 1`.
 
 | Na tela | Campo |
@@ -188,3 +190,4 @@ No teclado, o Screen Studio sobe pela bandeja (`Screen Studio.bat`). A janela n�
 - 25/10/2026 — Com uma faixa tocando, o Spotify entra na troca do cartaz da vez. O nome sai da janela e o tocando sai do áudio, porque a sessão de mídia pode não responder.
 - 25/10/2026 — A capa da faixa volta ao cartaz pelo catálogo público da música, quando a sessão de mídia não manda a imagem.
 - 25/10/2026 — O cartaz do Antigravity mostra o que resta em cada grupo da página de uso, com a marca no cabeçalho, quando a janela dele está na frente.
+- 05/11/2026 — A sessão do Cursor passou a ser lida mesmo cifrada em disco. O cartaz da cota volta a sair. [`../2026/11/semana-45/05112026_fix_cota_cursor.md`](../2026/11/semana-45/05112026_fix_cota_cursor.md)

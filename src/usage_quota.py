@@ -1,21 +1,78 @@
 """Uso do ciclo da conta do Cursor, lido da sessao local do editor.
 
-O token fica no state.vscdb do proprio Cursor. Nao e gravado neste projeto.
+O token fica no state.vscdb do proprio Cursor. Nas versoes recentes ele vem
+cifrado (cursor-safe-storage). A leitura decifra na memoria e nao grava o
+token neste projeto.
 """
 
 from __future__ import annotations
 
+import base64
+import ctypes
 import json
 import os
 import sqlite3
 import time
 import urllib.request
+from ctypes import wintypes
 from pathlib import Path
+
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 _ROOT = Path(__file__).resolve().parents[1]
 _CACHE: dict | None = None
 _CACHE_AT = 0.0
 _CACHE_TTL_S = 60.0
+_SAFE_PREFIX = "cursor-safe-storage:v1:"
+
+_kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+_crypt32 = ctypes.WinDLL("crypt32", use_last_error=True)
+
+
+class _DataBlob(ctypes.Structure):
+    _fields_ = [("cbData", wintypes.DWORD), ("pbData", ctypes.POINTER(ctypes.c_char))]
+
+
+def _dpapi(data: bytes) -> bytes:
+    buf = ctypes.create_string_buffer(data, len(data))
+    blob_in = _DataBlob(len(data), ctypes.cast(buf, ctypes.POINTER(ctypes.c_char)))
+    blob_out = _DataBlob()
+    if not _crypt32.CryptUnprotectData(
+        ctypes.byref(blob_in), None, None, None, None, 0, ctypes.byref(blob_out)
+    ):
+        raise OSError(ctypes.get_last_error())
+    try:
+        return ctypes.string_at(blob_out.pbData, blob_out.cbData)
+    finally:
+        _kernel32.LocalFree(blob_out.pbData)
+
+
+def _storage_key(cursor_root: Path) -> bytes:
+    state_path = cursor_root / "Local State"
+    if not state_path.is_file():
+        raise RuntimeError("chave da sessao do Cursor nao encontrada")
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    raw_key = base64.b64decode((state.get("os_crypt") or {}).get("encrypted_key") or "")
+    if not raw_key.startswith(b"DPAPI"):
+        raise RuntimeError("chave da sessao do Cursor ilegivel")
+    return _dpapi(raw_key[5:])
+
+
+def _open_session(value: str, cursor_root: Path) -> str:
+    token = value.strip()
+    if not token.startswith("cursor-safe-storage:"):
+        return token
+    if not token.startswith(_SAFE_PREFIX):
+        raise RuntimeError("sessao do Cursor cifrada numa versao desconhecida")
+    blob = base64.b64decode(token[len(_SAFE_PREFIX):])
+    if blob[:3] in (b"v10", b"v11"):
+        plain = AESGCM(_storage_key(cursor_root)).decrypt(blob[3:15], blob[15:], None)
+    else:
+        plain = _dpapi(blob)
+    text = plain.decode("utf-8").strip("\x00").strip()
+    if not text:
+        raise RuntimeError("Cursor sem sessao")
+    return text
 
 
 def load_screen_config() -> dict:
@@ -52,7 +109,8 @@ def _cursor_token() -> str:
     root = os.environ.get("APPDATA")
     if not root:
         raise RuntimeError("APPDATA nao definido")
-    db_path = Path(root) / "Cursor" / "User" / "globalStorage" / "state.vscdb"
+    cursor_root = Path(root) / "Cursor"
+    db_path = cursor_root / "User" / "globalStorage" / "state.vscdb"
     if not db_path.is_file():
         raise RuntimeError("sessao do Cursor nao encontrada")
     con = sqlite3.connect(f"file:{db_path.as_posix()}?mode=ro", uri=True)
@@ -65,7 +123,7 @@ def _cursor_token() -> str:
     token = (row[0] if row else "") or ""
     if not str(token).strip():
         raise RuntimeError("Cursor sem sessao")
-    return str(token)
+    return _open_session(str(token), cursor_root)
 
 
 def _pct(value) -> float:
