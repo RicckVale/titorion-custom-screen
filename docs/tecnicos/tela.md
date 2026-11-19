@@ -76,6 +76,8 @@ Duas coisas derrubam a tela no relógio roxo (homepage `0x0B`):
 
 Não chame `delete_picture()` nem `switch_to_home_page()` no meio de uma troca. Não feche o processo no meio de um `send_image()`: o envio cortado trava o controlador até reconectar o teclado.
 
+Se o cabo mudar de porta USB, o caminho HID antigo deixa de valer. O envio enumera de novo e abre a interface `0xFF87` / `0x20`. Quando o hidapi não informa a usage, ela é lida do descritor, sem pacote novo. O relógio Wi-Fi segue a mesma ideia: `clockHost` em `config/screen.json` é o último IP que respondeu. Se esse IP calar, a rede local é varrida e o IP novo fica gravado.
+
 Se o teclado foi reiniciado e a imagem visível parou de mudar, a memória ficou com cartaz velho e o arquivo `config/screen_state.json` não sabe disso. **Esvaziar tela**, na janela ou na bandeja, pede a picture page (`0x0D`), apaga uma imagem por vez (`0x0E`, no máximo seis, e para no primeiro timeout) e grava de novo o cartaz de carregamento e o cartaz atual. O relógio roxo pode aparecer nesse intervalo. Não é comando novo.
 
 Comando novo, fora de `0x40` / `0x41` / `0x42` e das páginas já documentadas, só depois de capturar o tráfego real.
@@ -191,3 +193,4 @@ No teclado, o Screen Studio sobe pela bandeja (`Screen Studio.bat`). A janela n�
 - 25/10/2026 — A capa da faixa volta ao cartaz pelo catálogo público da música, quando a sessão de mídia não manda a imagem.
 - 25/10/2026 — O cartaz do Antigravity mostra o que resta em cada grupo da página de uso, com a marca no cabeçalho, quando a janela dele está na frente.
 - 05/11/2026 — A sessão do Cursor passou a ser lida mesmo cifrada em disco. O cartaz da cota volta a sair. [`../2026/11/semana-45/05112026_fix_cota_cursor.md`](../2026/11/semana-45/05112026_fix_cota_cursor.md)
+- 19/11/2026 — O relógio é procurado na rede quando o IP configurado não responde, e o IP que responder fica em `clockHost`. O teclado reabre a interface da tela se a porta USB mudar.

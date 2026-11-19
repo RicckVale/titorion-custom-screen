@@ -92,15 +92,17 @@ Em `config/screen.json`:
 
 ```json
 "displays": ["keyboard", "clock"],
-"clockHost": "192.168.25.62"
+"clockHost": "192.168.25.32"
 ```
 
-`displays` escolhe as telas: só `["clock"]` funciona sem o teclado. `clockHost` é o IP do relógio. Ele aparece na tela durante a inicialização, ou na lista de aparelhos do roteador. Vale reservar esse IP no roteador.
+`displays` escolhe as telas: só `["clock"]` funciona sem o teclado. `clockHost` é o último IP em que o relógio respondeu. Na conexão o programa testa esse IP e, se ele não responder, procura na rede local um aparelho com a página do firmware (tema Photo). O IP que responder fica gravado em `clockHost`.
+
+O teclado é reconhecido de novo se o cabo mudar de porta USB. A interface da tela continua sendo a vendor `0xFF87` / `0x20`. O caminho HID muda com a porta: um envio que perde o aparelho enumera de novo e abre essa interface. Quando o hidapi não informa a usage, ela é lida do descritor, sem pacote novo.
 
 Teste rápido, antes de abrir o Screen Studio:
 
 ```powershell
-.\.venv\Scripts\python.exe src\check_clock.py           # só lê temas e fotos
+.\.venv\Scripts\python.exe src\check_clock.py           # lê temas e fotos; grava o IP se ele mudou
 .\.venv\Scripts\python.exe src\check_clock.py --send    # um cartaz vermelho e um verde, depois devolve o relógio
 ```
 

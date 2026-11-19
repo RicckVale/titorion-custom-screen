@@ -1,8 +1,9 @@
 """
-check_clock.py — Confere o relógio Wi-Fi configurado em config/screen.json (clockHost).
+check_clock.py — Confere o relógio Wi-Fi. Se o IP em config/screen.json não
+responder, procura na rede local e grava o novo.
 
 Uso:
-    python src/check_clock.py            # só lê temas e fotos (não muda nada)
+    python src/check_clock.py            # lê temas e fotos (não manda cartaz)
     python src/check_clock.py --send     # manda um cartaz vermelho e um verde, depois devolve o relógio
 """
 
@@ -13,7 +14,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-from clock_screen import ClockScreen
+from clock_screen import ClockScreen, normalize_host, resolve_clock_host
 
 _CONFIG = Path(__file__).resolve().parents[1] / "config" / "screen.json"
 _HOLD_S = 12  # slideshow troca a cada 5 s; dá tempo de ver cada cor
@@ -26,10 +27,19 @@ def _card(color: tuple, label: str) -> Image.Image:
 
 
 def main() -> None:
-    host = json.loads(_CONFIG.read_text(encoding="utf-8")).get("clockHost") or ""
+    before = ""
+    try:
+        before = normalize_host(
+            str(json.loads(_CONFIG.read_text(encoding="utf-8")).get("clockHost") or "")
+        )
+    except (OSError, json.JSONDecodeError):
+        before = ""
+    host = resolve_clock_host()
     if not host:
-        print("config/screen.json sem clockHost (ex.: \"192.168.25.62\").")
+        print("Não achei o relógio na rede. Confira se ele está no Wi-Fi.")
         sys.exit(1)
+    if host != before:
+        print(f"IP anterior não respondeu. Relógio em {host} (gravado em config/screen.json).")
 
     clock = ClockScreen(host)
     themes = clock._get_json("/theme/list")

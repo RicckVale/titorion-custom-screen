@@ -30,13 +30,17 @@ em vez do estado já mexido.
 from __future__ import annotations
 
 import io
+import ipaddress
 import json
+import re
+import socket
 import threading
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from PIL import Image
@@ -253,3 +257,178 @@ def _write_state(data: dict) -> None:
     path = _state_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+def normalize_host(host: str) -> str:
+    """Tira esquema e barra. `http://192.168.25.32/` vira `192.168.25.32`."""
+    text = (host or "").strip()
+    if text.startswith("https://"):
+        text = text[len("https://"):]
+    elif text.startswith("http://"):
+        text = text[len("http://"):]
+    return text.split("/")[0].strip()
+
+
+def _config_path() -> Path:
+    return Path(__file__).resolve().parent.parent / "config" / "screen.json"
+
+
+def _configured_host() -> str:
+    path = _config_path()
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return ""
+    if not isinstance(data, dict):
+        return ""
+    return normalize_host(str(data.get("clockHost") or ""))
+
+
+def _save_host(host: str) -> None:
+    """Grava o IP que respondeu. O valor no JSON é pista, não endereço fixo."""
+    path = _config_path()
+    try:
+        text = path.read_text(encoding="utf-8")
+        data = json.loads(text)
+    except (OSError, json.JSONDecodeError):
+        return
+    if not isinstance(data, dict):
+        return
+    if normalize_host(str(data.get("clockHost") or "")) == host:
+        return
+    updated, count = re.subn(
+        r'("clockHost"\s*:\s*")[^"]*"',
+        lambda match: f'{match.group(1)}{host}"',
+        text,
+        count=1,
+    )
+    try:
+        if count == 1:
+            path.write_text(updated, encoding="utf-8")
+            return
+        data["clockHost"] = host
+        path.write_text(
+            json.dumps(data, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+    except OSError:
+        return
+
+
+def clock_listing_ok(themes: object, photos: object) -> bool:
+    """O firmware do relógio responde /theme/list e /photo/list neste formato."""
+    if not isinstance(themes, dict) or not isinstance(photos, dict):
+        return False
+    if "interval" not in themes or not isinstance(themes.get("themes"), list):
+        return False
+    photo_theme = False
+    for theme in themes["themes"]:
+        if not isinstance(theme, dict):
+            continue
+        name = str(theme.get("name") or "").strip().lower()
+        if theme.get("id") == PHOTO_THEME or name == "photo":
+            photo_theme = True
+            break
+    if not photo_theme:
+        return False
+    return isinstance(photos.get("files"), list) and "total" in photos
+
+
+def _http_json(url: str, timeout: float) -> dict | None:
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _is_clock(host: str, timeout: float) -> bool:
+    themes = _http_json(f"http://{host}/theme/list", timeout)
+    if themes is None:
+        return False
+    photos = _http_json(f"http://{host}/photo/list", timeout)
+    return clock_listing_ok(themes, photos)
+
+
+def _local_prefixes() -> list[str]:
+    """Prefixos /24 das redes privadas desta máquina. O relógio fica numa delas."""
+    ips: list[str] = []
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            # Não envia pacote: só descobre o IPv4 de saída.
+            sock.connect(("8.8.8.8", 80))
+            ips.append(sock.getsockname()[0])
+        finally:
+            sock.close()
+    except OSError:
+        pass
+    try:
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            ips.append(info[4][0])
+    except OSError:
+        pass
+    prefixes: list[str] = []
+    for ip in ips:
+        try:
+            addr = ipaddress.ip_address(ip)
+        except ValueError:
+            continue
+        if not addr.is_private or addr.is_loopback:
+            continue
+        parts = ip.split(".")
+        if len(parts) != 4:
+            continue
+        prefix = ".".join(parts[:3])
+        if prefix not in prefixes:
+            prefixes.append(prefix)
+    return prefixes
+
+
+def _scan_prefix(prefix: str, skip: str) -> str:
+    hosts = [
+        f"{prefix}.{n}" for n in range(1, 255)
+        if f"{prefix}.{n}" != skip
+    ]
+    stop = threading.Event()
+
+    def probe(host: str) -> bool:
+        if stop.is_set():
+            return False
+        return _is_clock(host, 0.35)
+
+    pool = ThreadPoolExecutor(max_workers=64)
+    try:
+        futures = {pool.submit(probe, host): host for host in hosts}
+        for fut in as_completed(futures):
+            try:
+                ok = fut.result()
+            except Exception:
+                ok = False
+            if ok:
+                stop.set()
+                return futures[fut]
+    finally:
+        try:
+            pool.shutdown(wait=False, cancel_futures=True)
+        except TypeError:
+            pool.shutdown(wait=False)
+    return ""
+
+
+def resolve_clock_host(hint: str | None = None) -> str:
+    """IP do relógio. Testa o configurado e, se ele não responder, varre a rede local."""
+    if hint is None:
+        hint = _configured_host()
+    else:
+        hint = normalize_host(hint)
+    if hint and _is_clock(hint, 1.0):
+        _save_host(hint)
+        return hint
+    for prefix in _local_prefixes():
+        found = _scan_prefix(prefix, hint)
+        if found:
+            _save_host(found)
+            return found
+    return ""

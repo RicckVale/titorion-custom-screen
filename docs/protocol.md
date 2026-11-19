@@ -34,6 +34,8 @@ O driver fala com a interface **vendor-defined**:
 | Report ID de saída | `6` |
 | Tamanho do relatório | **63 bytes** de payload (report ID não conta) |
 
+O caminho HID (`path`) inclui a porta USB e muda quando o cabo troca de entrada. A identificação estável é VID, PID, usage page e usage. Se o hidapi devolver usage 0, a usage sai do descritor HID (leitura, sem pacote de escrita). Um caminho antigo que não abre mais é descartado; o próximo é a interface na porta atual.
+
 ## 2. Formato do pacote (função `Ui` do driver)
 
 ```

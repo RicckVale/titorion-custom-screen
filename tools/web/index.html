@@ -332,26 +332,62 @@ async function uploadImageBytes(pixelBytes) {
 
 // ==================== Eventos ====================
 
+function isScreen(dev) {
+  if (!dev || dev.vendorId !== VID || dev.productId !== PID) return false;
+  return (dev.collections || []).some(
+    (col) => col.usagePage === USAGE_PAGE && col.usage === USAGE
+  );
+}
+
+async function openScreen(dev) {
+  if (!dev.opened) await dev.open();
+  device = dev;
+  log(`✅ Conectado: ${dev.productName || 'Titorion'} (PID ${dev.productId})`);
+  setStatus(true, 'conectado');
+  updateButtons();
+}
+
 $('btn-connect').addEventListener('click', async () => {
   try {
     if (!navigator.hid) {
       log('❌ WebHID não disponível. Use Chrome, Edge ou Opera no desktop.');
       return;
     }
-    const devices = await navigator.hid.requestDevice({
-      filters: [{ vendorId: VID, productId: PID, usagePage: USAGE_PAGE, usage: USAGE }]
+    const granted = (await navigator.hid.getDevices()).filter(isScreen);
+    for (const dev of granted) {
+      try {
+        await openScreen(dev);
+        return;
+      } catch (err) {
+        log(`A interface anterior não abriu (${err.message}). Procurando de novo.`);
+      }
+    }
+    const chosen = await navigator.hid.requestDevice({
+      filters: [
+        { vendorId: VID, productId: PID, usagePage: USAGE_PAGE, usage: USAGE },
+        { vendorId: VID, productId: PID }
+      ]
     });
-    if (devices.length === 0) {
-      log('Nenhum dispositivo selecionado.');
+    const screen = chosen.find(isScreen);
+    if (!screen) {
+      log(chosen.length
+        ? 'Essa interface não é a da tela. Na lista, escolha a usage 0xFF87 / 0x20.'
+        : 'Nenhum dispositivo selecionado.');
       return;
     }
-    device = devices[0];
-    if (!device.opened) await device.open();
-    log(`✅ Conectado: ${device.productName || 'Titorion'} (PID ${device.productId})`);
-    setStatus(true, 'conectado');
-    updateButtons();
+    await openScreen(screen);
   } catch (err) {
     log(`❌ Erro ao conectar: ${err.message}`);
+  }
+});
+
+navigator.hid && navigator.hid.addEventListener('connect', async (event) => {
+  if (device || !isScreen(event.device)) return;
+  try {
+    await openScreen(event.device);
+    log('Teclado reconhecido de novo depois da troca de porta.');
+  } catch (err) {
+    log(`Não abriu a tela na porta nova: ${err.message}`);
   }
 });
 

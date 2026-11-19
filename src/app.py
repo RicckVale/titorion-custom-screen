@@ -350,7 +350,7 @@ class App(tk.Tk):
             if "keyboard" in self.screen.names:
                 self.log(t("keyboard_connected"))
             if "clock" in self.screen.names:
-                self.log(t("clock_connected"))
+                self.log(t("clock_connected", host=self.screen.endpoint("clock")))
             self.after(400, self._boot_screen)
         except Exception as e:
             self.screen = None
@@ -447,7 +447,20 @@ class App(tk.Tk):
                 champion_changed = bool(champion) and champion != last_champion
                 # Sem a limpeza, a imagem do campeão continua na tela depois que o jogo fecha.
                 leaving_champion = bool(last_champion) and not champion
-                if digest != last_bytes and due and now - last_sent >= 2:
+                # Teclado caiu (porta USB nova): reenvia só para ele, sem martelar o relógio.
+                retry_keyboard = (
+                    self.screen is not None
+                    and self.screen.keyboard_down
+                    and digest == last_bytes
+                    and now - last_sent >= 2
+                )
+                if retry_keyboard:
+                    self.screen.send_image(img, only={"keyboard"})
+                    if not self.screen.keyboard_down:
+                        last_sent = time.monotonic()
+                        self.after(0, self.show_preview, img)
+                        self.after(0, self.log, t("sent_line", text=text))
+                elif digest != last_bytes and due and now - last_sent >= 2:
                     assert self.screen is not None
                     if champion_changed or leaving_champion:
                         self.after(0, self.log, t("resetting"))

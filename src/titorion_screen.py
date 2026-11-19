@@ -17,7 +17,9 @@ Uso básico:
 
 from __future__ import annotations
 
+import ctypes
 import json
+import os
 import threading
 import time
 from pathlib import Path
@@ -112,6 +114,184 @@ def image_to_rgb565be(image, width: int = SCREEN_W, height: int = SCREEN_H) -> b
     return bytes(out)
 
 
+def _not_found_message() -> str:
+    return (
+        "Teclado Titorion não encontrado (VID 0x%04X / PID 0x%04X, "
+        "usagePage 0x%04X / usage 0x%02X). Está conectado por cabo? "
+        "Outro programa está usando a tela?"
+        % (VID, PID, USAGE_PAGE, USAGE)
+    )
+
+
+def _path_text(path: bytes | str) -> str:
+    if isinstance(path, bytes):
+        return path.decode("utf-8", "surrogateescape").rstrip("\x00")
+    return str(path).rstrip("\x00")
+
+
+def _descriptor_usage(path: bytes | str | None) -> tuple[int, int] | None:
+    """Lê usage page e usage no descritor HID. Não envia relatório.
+
+    No Windows o hidapi às vezes devolve usage 0 depois que o cabo muda de
+    porta. O descritor continua com 0xFF87 / 0x20.
+    """
+    if os.name != "nt" or not path:
+        return None
+
+    class HIDP_CAPS(ctypes.Structure):
+        _fields_ = [
+            ("Usage", ctypes.c_ushort),
+            ("UsagePage", ctypes.c_ushort),
+            ("InputReportByteLength", ctypes.c_ushort),
+            ("OutputReportByteLength", ctypes.c_ushort),
+            ("FeatureReportByteLength", ctypes.c_ushort),
+            ("Reserved", ctypes.c_ushort * 17),
+            ("NumberLinkCollectionNodes", ctypes.c_ushort),
+            ("NumberInputButtonCaps", ctypes.c_ushort),
+            ("NumberInputValueCaps", ctypes.c_ushort),
+            ("NumberInputDataIndices", ctypes.c_ushort),
+            ("NumberOutputButtonCaps", ctypes.c_ushort),
+            ("NumberOutputValueCaps", ctypes.c_ushort),
+            ("NumberOutputDataIndices", ctypes.c_ushort),
+            ("NumberFeatureButtonCaps", ctypes.c_ushort),
+            ("NumberFeatureValueCaps", ctypes.c_ushort),
+            ("NumberFeatureDataIndices", ctypes.c_ushort),
+        ]
+
+    if ctypes.sizeof(HIDP_CAPS) != 62:
+        return None
+    try:
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        hid_dll = ctypes.WinDLL("hid", use_last_error=True)
+    except OSError:
+        return None
+
+    kernel.CreateFileW.argtypes = [
+        ctypes.c_wchar_p, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_void_p,
+        ctypes.c_uint32, ctypes.c_uint32, ctypes.c_void_p,
+    ]
+    kernel.CreateFileW.restype = ctypes.c_void_p
+    kernel.CloseHandle.argtypes = [ctypes.c_void_p]
+    kernel.CloseHandle.restype = ctypes.c_int
+    hid_dll.HidD_GetPreparsedData.argtypes = [
+        ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p),
+    ]
+    hid_dll.HidD_GetPreparsedData.restype = ctypes.c_int
+    hid_dll.HidD_FreePreparsedData.argtypes = [ctypes.c_void_p]
+    hid_dll.HidD_FreePreparsedData.restype = ctypes.c_int
+    hid_dll.HidP_GetCaps.argtypes = [ctypes.c_void_p, ctypes.POINTER(HIDP_CAPS)]
+    hid_dll.HidP_GetCaps.restype = ctypes.c_long
+
+    handle = kernel.CreateFileW(
+        _path_text(path), 0, 0x1 | 0x2, None, 3, 0, None,
+    )
+    invalid = ctypes.c_void_p(-1).value
+    if not handle or handle == invalid:
+        return None
+    preparsed = ctypes.c_void_p()
+    try:
+        if not hid_dll.HidD_GetPreparsedData(handle, ctypes.byref(preparsed)):
+            return None
+        caps = HIDP_CAPS()
+        # HIDP_STATUS_SUCCESS
+        if hid_dll.HidP_GetCaps(preparsed, ctypes.byref(caps)) != 0x00110000:
+            return None
+        return int(caps.UsagePage), int(caps.Usage)
+    finally:
+        if preparsed:
+            hid_dll.HidD_FreePreparsedData(preparsed)
+        kernel.CloseHandle(handle)
+
+
+def _matching_devices() -> list[dict]:
+    """Interfaces deste VID/PID. A porta USB não entra na busca."""
+    try:
+        primary = list(hid.enumerate(VID, PID))
+    except OSError:
+        primary = []
+    batches = [primary]
+    found_exact = any(
+        (info.get("usage_page") or 0) == USAGE_PAGE and (info.get("usage") or 0) == USAGE
+        for info in primary
+    )
+    if not found_exact:
+        try:
+            batches.append(list(hid.enumerate()))
+        except OSError:
+            pass
+    seen: set[bytes | str] = set()
+    found: list[dict] = []
+    for batch in batches:
+        for info in batch:
+            if info.get("vendor_id") != VID or info.get("product_id") != PID:
+                continue
+            path = info.get("path")
+            if not path or path in seen:
+                continue
+            seen.add(path)
+            found.append(info)
+    return found
+
+
+def screen_candidates() -> list[dict]:
+    """Interfaces da tela, da mais certa para a reserva.
+
+    O `path` HID inclui a porta USB e muda com o cabo. A identidade estável
+    é VID, PID, usage page 0xFF87 e usage 0x20.
+    """
+    devices = _matching_devices()
+    exact = any(
+        (info.get("usage_page") or 0) == USAGE_PAGE and (info.get("usage") or 0) == USAGE
+        for info in devices
+    )
+    ranked: list[dict] = []
+    for info in devices:
+        raw_page = int(info.get("usage_page") or 0)
+        raw_usage = int(info.get("usage") or 0)
+        page, usage, source = raw_page, raw_usage, "hid"
+        if not exact and raw_page == 0 and raw_usage == 0:
+            read = _descriptor_usage(info.get("path"))
+            if read:
+                page, usage = read
+                source = "descriptor"
+        if page != USAGE_PAGE or usage != USAGE:
+            continue
+        path = info.get("path")
+        if not path:
+            continue
+        ranked.append({
+            "path": path,
+            "usage_page": page,
+            "usage": usage,
+            "raw_usage_page": raw_page,
+            "raw_usage": raw_usage,
+            "score": 100,
+            "source": source,
+            "interface_number": info.get("interface_number"),
+            "product": info.get("product_string") or "",
+        })
+    ranked.sort(key=lambda item: _path_text(item["path"]))
+    return ranked
+
+
+def _path_listed(path: bytes | str | None) -> bool:
+    if not path:
+        return False
+    try:
+        batches = [list(hid.enumerate(VID, PID))]
+        if not batches[0]:
+            batches.append(list(hid.enumerate()))
+    except OSError:
+        return False
+    for batch in batches:
+        for info in batch:
+            if info.get("vendor_id") != VID or info.get("product_id") != PID:
+                continue
+            if info.get("path") == path:
+                return True
+    return False
+
+
 class TitorionScreen:
     """Conexão com a tela do teclado via a interface HID vendor-defined."""
 
@@ -119,6 +299,7 @@ class TitorionScreen:
         self.timeout_s = timeout_s
         self.retries = retries
         self._dev: Optional[hid.device] = None
+        self._path: bytes | str | None = None
         # Serializa uploads: dois uploads concorrentes intercalam pacotes e
         # deixam o controlador da tela travado ate o teclado ser reconectado.
         self._lock = threading.RLock()
@@ -128,28 +309,55 @@ class TitorionScreen:
     # ---- conexão ----
 
     @staticmethod
-    def find_interface() -> Optional[bytes]:
-        """Procura a interface vendor-defined (usagePage 0xFFC7 / usage 0x20)."""
-        for info in hid.enumerate(VID, PID):
-            if info.get("usage_page") == USAGE_PAGE and info.get("usage") == USAGE:
-                return info["path"]
-        return None
+    def find_interface() -> bytes | str | None:
+        """Caminho da interface da tela (usage page 0xFF87 / usage 0x20)."""
+        found = screen_candidates()
+        return found[0]["path"] if found else None
 
-    def connect(self) -> None:
-        path = self.find_interface()
-        if path is None:
-            raise RuntimeError(
-                "Teclado Titorion não encontrado (VID 0x%04X / PID 0x%04X, "
-                "usagePage 0x%04X). Está conectado por cabo? Outro programa "
-                "está usando o teclado?" % (VID, PID, USAGE_PAGE)
-            )
-        self._dev = hid.device()
-        self._dev.open_path(path)
+    def connect(self, skip: set[bytes | str] | None = None) -> None:
+        """Abre a interface da tela. Tenta cada caminho: a porta USB muda o path."""
+        self.close()
+        skip = skip or set()
+        candidates = [item for item in screen_candidates() if item["path"] not in skip]
+        if not candidates:
+            raise RuntimeError(_not_found_message())
+        last_error: Optional[OSError] = None
+        for info in candidates:
+            dev = hid.device()
+            try:
+                dev.open_path(info["path"])
+            except OSError as exc:
+                last_error = exc
+                try:
+                    dev.close()
+                except OSError:
+                    pass
+                continue
+            self._dev = dev
+            self._path = info["path"]
+            return
+        detail = f" ({last_error})" if last_error else ""
+        raise RuntimeError(_not_found_message() + detail)
 
     def close(self) -> None:
-        if self._dev is not None:
-            self._dev.close()
-            self._dev = None
+        dev = self._dev
+        self._dev = None
+        self._path = None
+        if dev is not None:
+            try:
+                dev.close()
+            except OSError:
+                pass
+
+    def _reopen(self) -> None:
+        """Fecha o caminho morto e abre a interface na porta atual."""
+        dead = self._path
+        try:
+            self.connect(skip={dead} if dead else set())
+        except RuntimeError:
+            if not dead:
+                raise
+            self.connect()
 
     def __enter__(self) -> "TitorionScreen":
         self.connect()
@@ -185,6 +393,7 @@ class TitorionScreen:
     def _send_with_retry(self, report: bytes) -> bytes:
         timeouts = 0
         busy = 0
+        reopened = False
         while True:
             try:
                 return self._send_and_wait(report)
@@ -193,11 +402,23 @@ class TitorionScreen:
                 if busy >= BUSY_RETRIES:
                     raise
                 time.sleep(BUSY_PAUSE_S)
-            except (TimeoutError, OSError):
+            except TimeoutError:
+                # Cabo em outra porta: o path antigo some da enumeração.
+                gone = not _path_listed(self._path)
+                if not reopened and (gone or timeouts + 1 >= self.retries):
+                    reopened = True
+                    self._reopen()
+                    timeouts = 0
+                    continue
                 timeouts += 1
                 if timeouts >= self.retries:
                     raise
                 time.sleep(0.12)
+            except OSError:
+                if reopened:
+                    raise
+                reopened = True
+                self._reopen()
 
     def _send_buffer(self, cmd: int, data: bytes) -> None:
         """Fragmenta em pacotes de 56 bytes com offset — funções h9t/g9t do driver."""
